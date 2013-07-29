@@ -21,7 +21,7 @@ public class ProgressTracker {
 	public void setCurrent(long current) {
 		this.current = current;
 		if (current > this.total) this.total = current;
-		if (this.queue != null) this.queue.update(); 
+		if (this.queue != null) this.queue.updateProgress(); 
 	}
 
 	public long getTotal() {
@@ -30,7 +30,7 @@ public class ProgressTracker {
 
 	public void setTotal(long total) {
 		this.total = total;
-		if (this.queue != null) this.queue.update(); 
+		if (this.queue != null) this.queue.updateProgress(); 
 	}
 
 	public void addProgress(long amount) {
