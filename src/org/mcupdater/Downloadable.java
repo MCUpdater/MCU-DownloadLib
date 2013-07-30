@@ -18,13 +18,15 @@ public class Downloadable {
 	private final String friendlyName;
 	private final String filename;
 	private final String md5;
+	private long size;
 	private final List<URL> downloadURLs;
 	private final ProgressTracker tracker;
 	
-	public Downloadable(String friendlyName, String filename, String md5, List<URL> downloadURLs) {
+	public Downloadable(String friendlyName, String filename, String md5, long size, List<URL> downloadURLs) {
 		this.friendlyName = friendlyName;
 		this.filename = filename;
 		this.md5 = md5;
+		this.size = size;
 		this.downloadURLs = downloadURLs;
 		this.tracker = new ProgressTracker();
 	}
@@ -41,8 +43,20 @@ public class Downloadable {
 		return md5;
 	}
 
+	public long getSize() {
+		return size;
+	}
+
+	public void setSize(long size) {
+		this.size = size;
+	}
+
 	public List<URL> getURLs() {
 		return this.downloadURLs;
+	}
+	
+	public ProgressTracker getTracker() {
+		return this.tracker;
 	}
 	
 	public void download(File basePath) throws IOException {
