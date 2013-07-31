@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class DownloadQueue {
 
@@ -37,6 +38,30 @@ public class DownloadQueue {
 			entry.getTracker().setTotal(100000L);
 			entry.getTracker().setQueue(this);
 		}
+	}
+	
+	public void processQueue(ThreadPoolExecutor executor) {
+		if (this.inProgress){
+			throw new IllegalStateException("Queue is already in progress");
+		}
+		this.inProgress = true;
+		
+		if (this.fullList.isEmpty()) {
+			//TODO Log entry: No files to download
+			this.listener.onQueueFinished(this);
+		} else {
+			executor.submit(new Runnable(){
+				@Override
+				public void run() {
+					DownloadQueue.this.iterateQueue();
+				}
+			});
+		}
+	}
+
+	protected void iterateQueue() {
+		// TODO Auto-generated method stub
+		
 	}
 
 	public void updateProgress() {
