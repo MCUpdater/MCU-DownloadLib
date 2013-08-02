@@ -1,5 +1,7 @@
 package org.mcupdater;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -7,6 +9,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DownloadQueue {
 
@@ -17,18 +20,21 @@ public class DownloadQueue {
 	private final List<ProgressTracker> trackers = Collections.synchronizedList(new ArrayList<ProgressTracker>());
 	private final TrackerListener listener;
 	private final String name;
-	private boolean inProgress;
+	private final AtomicInteger threadPoolRemain = new AtomicInteger();
+	private final File basePath;
+	private boolean active;
 
-	public DownloadQueue(String name, TrackerListener listener, Collection<Downloadable> queue) {
+	public DownloadQueue(String name, TrackerListener listener, Collection<Downloadable> queue, File basePath) {
 		this.name = name;
 		this.listener = listener;
 		if (queue != null) {
 			addToQueue(queue);
 		}
+		this.basePath = basePath;
 	}
 	
 	private void addToQueue(Collection<Downloadable> queue) {
-		if (this.inProgress) {
+		if (this.active) {
 			throw new IllegalStateException("Download queue already active");
 		}
 		this.fullList.addAll(queue);
@@ -41,31 +47,55 @@ public class DownloadQueue {
 	}
 	
 	public void processQueue(ThreadPoolExecutor executor) {
-		if (this.inProgress){
+		if (this.active){
 			throw new IllegalStateException("Queue is already in progress");
 		}
-		this.inProgress = true;
+		this.active = true;
 		
 		if (this.fullList.isEmpty()) {
 			//TODO Log entry: No files to download
 			this.listener.onQueueFinished(this);
 		} else {
-			executor.submit(new Runnable(){
-				@Override
-				public void run() {
-					DownloadQueue.this.iterateQueue();
-				}
-			});
+			int maxPool = executor.getMaximumPoolSize();
+			this.threadPoolRemain.set(maxPool);
+			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
+				executor.submit(new Runnable(){
+					@Override
+					public void run() {
+						DownloadQueue.this.iterateQueue();
+					}
+				});
+			}
 		}
 	}
 
 	protected void iterateQueue() {
-		// TODO Auto-generated method stub
-		
+		Downloadable entry;
+		while ((entry = this.processQueue.poll()) != null) {
+			try {
+				entry.download(basePath);
+				this.successList.add(entry);
+				// TODO Log entry: download success
+			} catch (IOException e) {
+				// TODO Log error: download failure
+				this.failureList.add(entry);
+			}
+		}
+		if (this.threadPoolRemain.decrementAndGet() <= 0){
+			this.listener.onQueueFinished(this);
+		}
 	}
 
 	public void updateProgress() {
 		this.listener.onQueueProgress(this);
+	}
+	
+	public boolean isActive() {
+		return this.active;
+	}
+	
+	public boolean isFinished() {
+		return this.active && (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0);
 	}
 	
 	public float getProgress() {
@@ -84,5 +114,9 @@ public class DownloadQueue {
 			result = current/total;
 		}
 		return result;
+	}
+
+	public String getName() {
+		return name;
 	}
 }
