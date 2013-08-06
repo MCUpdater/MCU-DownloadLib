@@ -58,11 +58,13 @@ public class DownloadQueue {
 		} else {
 			int maxPool = executor.getMaximumPoolSize();
 			this.threadPoolRemain.set(maxPool);
+			this.listener.printMessage("Pool size: " + maxPool);
 			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
 				executor.submit(new Runnable(){
 					@Override
 					public void run() {
 						DownloadQueue.this.iterateQueue();
+						DownloadQueue.this.listener.printMessage("Thread finished.");
 					}
 				});
 			}
@@ -72,11 +74,14 @@ public class DownloadQueue {
 	protected void iterateQueue() {
 		Downloadable entry;
 		while ((entry = this.processQueue.poll()) != null) {
+			this.listener.printMessage("Downloading: " + entry.getFriendlyName());
 			try {
 				entry.download(basePath);
 				this.successList.add(entry);
+				this.listener.printMessage("Download success");
 				// TODO Log entry: download success
 			} catch (IOException e) {
+				this.listener.printMessage(entry.getFriendlyName() + " failed: " + e.getMessage());
 				// TODO Log error: download failure
 				this.failureList.add(entry);
 			}
@@ -84,6 +89,7 @@ public class DownloadQueue {
 		if (this.threadPoolRemain.decrementAndGet() <= 0){
 			this.listener.onQueueFinished(this);
 		}
+		this.listener.printMessage("Remaining threads: " + this.threadPoolRemain.get());
 	}
 
 	public void updateProgress() {
@@ -118,5 +124,9 @@ public class DownloadQueue {
 
 	public String getName() {
 		return name;
+	}
+
+	public void printMessage(String msg) {
+		this.listener.printMessage(msg);
 	}
 }

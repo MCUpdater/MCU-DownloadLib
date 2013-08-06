@@ -60,21 +60,26 @@ public class Downloadable {
 	}
 	
 	public void download(File basePath) throws IOException {
-		String localMD5 = null;
+		String localMD5 = "";
 		File resolvedFile = null;
 		
 		if (basePath != null && (!basePath.isDirectory())) {
 			basePath.mkdirs();			
 		}
 		resolvedFile = new File(basePath, this.filename);
+		printMessage(resolvedFile.getAbsolutePath());
 		if (resolvedFile.isFile()) {
 			localMD5 = getMD5(resolvedFile);
+			printMessage(localMD5 + " - " + this.md5);
 		}
 		
 		if (resolvedFile.isFile() && !resolvedFile.canWrite()) {
 			throw new RuntimeException("No write permissions for " + resolvedFile.toString() + "!");
 		}
-		if (localMD5 == this.md5) {
+		if (localMD5.equals(this.md5)) {
+			printMessage("MD5 matches - No download");
+			this.tracker.setCurrent(1);
+			this.tracker.setTotal(1);
 			//TODO Log entry: No download necessary
 			return;
 		}
@@ -93,7 +98,8 @@ public class Downloadable {
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
 				localMD5 = getMD5(resolvedFile);
-				if (localMD5 == this.md5) {
+				if (localMD5.equals(this.md5)) {
+					printMessage("Download finished");
 					//TODO Log entry: Download successful
 					return;
 				}				
@@ -104,6 +110,10 @@ public class Downloadable {
 		throw new RuntimeException("Unable to download (" + this.friendlyName + ") - All known URLs failed.");
 	}
 	
+	private void printMessage(String msg) {
+		this.getTracker().getQueue().printMessage(msg);
+	}
+
 	public static String getMD5(File file) throws IOException {
 		byte[] hash;
 		InputStream is = new FileInputStream(file);
