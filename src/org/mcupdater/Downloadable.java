@@ -77,7 +77,7 @@ public class Downloadable {
 		if (resolvedFile.isFile() && !resolvedFile.canWrite()) {
 			throw new RuntimeException("No write permissions for " + resolvedFile.toString() + "!");
 		}
-		if (localMD5.equals(this.md5)) {
+		if (localMD5.equals(this.md5) && (!this.md5.isEmpty())) {
 			printMessage("MD5 matches - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
