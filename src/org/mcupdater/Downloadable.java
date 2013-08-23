@@ -67,6 +67,7 @@ public class Downloadable {
 			basePath.mkdirs();			
 		}
 		resolvedFile = new File(basePath, this.filename);
+		resolvedFile.getParentFile().mkdirs();
 		printMessage(resolvedFile.getAbsolutePath());
 		if (resolvedFile.isFile()) {
 			localMD5 = getMD5(resolvedFile);
@@ -98,13 +99,14 @@ public class Downloadable {
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
 				localMD5 = getMD5(resolvedFile);
-				if (localMD5.equals(this.md5)) {
+				if (localMD5.equals(this.md5) || this.md5.isEmpty()) {
 					printMessage("Download finished");
 					//TODO Log entry: Download successful
 					return;
 				}				
 			} catch (IOException e) {
 				//TODO Log warning: Error during connection
+				printMessage(e.getMessage());
 			}
 		}
 		throw new RuntimeException("Unable to download (" + this.friendlyName + ") - All known URLs failed.");

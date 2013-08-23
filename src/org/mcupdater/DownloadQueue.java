@@ -129,4 +129,12 @@ public class DownloadQueue {
 	public void printMessage(String msg) {
 		this.listener.printMessage(msg);
 	}
+	
+	public List<Downloadable> getFailures() {
+		return this.failureList;
+	}
+	
+	public List<Downloadable> getSuccesses() {
+		return this.successList;
+	}
 }
