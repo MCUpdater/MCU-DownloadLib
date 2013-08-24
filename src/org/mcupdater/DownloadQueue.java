@@ -77,7 +77,9 @@ public class DownloadQueue {
 			this.listener.printMessage("Downloading: " + entry.getFriendlyName());
 			try {
 				entry.download(basePath);
-				this.successList.add(entry);
+				synchronized (this.successList) {
+					this.successList.add(entry);					
+				}
 				this.listener.printMessage("Download success");
 				// TODO Log entry: download success
 			} catch (IOException e) {
