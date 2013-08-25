@@ -69,23 +69,23 @@ public class Downloadable {
 		}
 		resolvedFile = new File(basePath, this.filename);
 		resolvedFile.getParentFile().mkdirs();
-		printMessage(resolvedFile.getAbsolutePath());
+		//printMessage(resolvedFile.getAbsolutePath());
 		if (resolvedFile.isFile()) {
 			localMD5 = getMD5(resolvedFile);
-			printMessage(localMD5 + " - " + this.md5);
+			//printMessage(localMD5 + " - " + this.md5);
 		}
 		
 		if (resolvedFile.isFile() && !resolvedFile.canWrite()) {
 			throw new RuntimeException("No write permissions for " + resolvedFile.toString() + "!");
 		}
 		if (this.md5.isEmpty() && resolvedFile.isFile()) {
-			printMessage("No MD5 and file exists - No download");
+			//printMessage("No MD5 and file exists - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
 			return;
 		}
 		if (localMD5.equals(this.md5)) {
-			printMessage("MD5 matches - No download");
+			//printMessage("MD5 matches - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
 			//TODO Log entry: No download necessary
@@ -107,7 +107,7 @@ public class Downloadable {
 				IOUtils.closeQuietly(output);
 				localMD5 = getMD5(resolvedFile);
 				if (localMD5.equals(this.md5) || this.md5.isEmpty()) {
-					printMessage("Download finished");
+					//printMessage("Download finished: " + this.filename);
 					//TODO Log entry: Download successful
 					return;
 				}				

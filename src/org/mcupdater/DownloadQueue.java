@@ -139,4 +139,22 @@ public class DownloadQueue {
 	public List<Downloadable> getSuccesses() {
 		return this.successList;
 	}
+	
+	public int getTotalFileCount(){
+		synchronized(this.fullList) {
+			return this.fullList.size();
+		}
+	}
+	
+	public int getSuccessFileCount(){
+		synchronized(this.successList) {
+			return this.successList.size();
+		}
+	}
+	
+	public int getFailedFileCount(){
+		synchronized(this.failureList) {
+			return this.failureList.size();
+		}
+	}
 }
