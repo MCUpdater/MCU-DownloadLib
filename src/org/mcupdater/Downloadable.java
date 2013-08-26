@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
@@ -60,7 +61,9 @@ public class Downloadable {
 	}
 	
 	
-	public void download(File basePath) throws IOException {
+	public void download(File basePath, File cache) throws IOException {
+		printMessage("Started");
+		printMessage("NOE - " + nullOrEmpty(this.md5));
 		String localMD5 = "-";
 		File resolvedFile = null;
 		
@@ -76,20 +79,33 @@ public class Downloadable {
 		}
 		
 		if (resolvedFile.isFile() && !resolvedFile.canWrite()) {
+			printMessage("PANIC! Can't Write!");
 			throw new RuntimeException("No write permissions for " + resolvedFile.toString() + "!");
 		}
-		if (this.md5.isEmpty() && resolvedFile.isFile()) {
-			//printMessage("No MD5 and file exists - No download");
+		if (nullOrEmpty(this.md5) && resolvedFile.isFile()) {
+			printMessage("No MD5 and file exists - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
 			return;
 		}
 		if (localMD5.equals(this.md5)) {
-			//printMessage("MD5 matches - No download");
+			printMessage("MD5 matches - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
 			//TODO Log entry: No download necessary
 			return;
+		}
+		if (!(cache == null) && !nullOrEmpty(this.md5)) {
+			File cacheFile = new File(cache, this.md5.toLowerCase()+".bin");
+			if (cacheFile.exists()) {
+				printMessage("Cache hit for MD5");
+				InputStream input = new TrackingInputStream(new FileInputStream(cacheFile), this.tracker);
+				FileOutputStream output = new FileOutputStream(resolvedFile);
+				IOUtils.copy(input, output);
+				IOUtils.closeQuietly(input);
+				IOUtils.closeQuietly(output);
+				return;
+			}
 		}
 		Iterator<URL> iteratorURL = downloadURLs.iterator();
 		while (iteratorURL.hasNext()){
@@ -101,26 +117,49 @@ public class Downloadable {
 					this.tracker.setTotal(conn.getContentLength());
 				}
 				InputStream input = new TrackingInputStream(conn.getInputStream(), this.tracker);
-				FileOutputStream output = new FileOutputStream(resolvedFile);
+				OutputStream output;
+				File cacheFile = nullOrEmpty(this.md5) ? null : new File(cache, this.md5.toLowerCase()+".bin");
+				if (!(cache == null) && !nullOrEmpty(this.md5)) {
+					output = new MirrorOutputStream(resolvedFile, cacheFile);
+				} else {
+					output = new FileOutputStream(resolvedFile);
+				}
 				IOUtils.copy(input, output);
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
 				localMD5 = getMD5(resolvedFile);
-				if (localMD5.equals(this.md5) || this.md5.isEmpty()) {
-					//printMessage("Download finished: " + this.filename);
+				if (nullOrEmpty(this.md5) || localMD5.equals(this.md5)) {
+					printMessage("Download finished");
 					//TODO Log entry: Download successful
 					return;
-				}				
+				} else {
+					printMessage("MD5 mismatch after download!");
+					if (cacheFile.exists()) { cacheFile.delete(); }
+					return;  // Warn about MD5 mismatches, delete bad cache files, allow the download regardless.
+				}
 			} catch (IOException e) {
 				//TODO Log warning: Error during connection
 				printMessage(e.getMessage());
+			} catch (Exception e) {
+				printMessage("Something happened! - " + e.getMessage());
 			}
 		}
+		printMessage("Unable to download");
 		throw new RuntimeException("Unable to download (" + this.friendlyName + ") - All known URLs failed.");
 	}
 	
+	private boolean nullOrEmpty(String input) {
+		if (input == null) {
+			return true;
+		} else if (input.isEmpty()) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	private void printMessage(String msg) {
-		this.getTracker().getQueue().printMessage(msg);
+		this.getTracker().getQueue().printMessage(this.filename + " - " + msg);
 	}
 
 	public static String getMD5(File file) throws IOException {

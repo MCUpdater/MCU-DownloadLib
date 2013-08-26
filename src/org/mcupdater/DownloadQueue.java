@@ -22,15 +22,17 @@ public class DownloadQueue {
 	private final String name;
 	private final AtomicInteger threadPoolRemain = new AtomicInteger();
 	private final File basePath;
+	private final File cachePath;
 	private boolean active;
 
-	public DownloadQueue(String name, TrackerListener listener, Collection<Downloadable> queue, File basePath) {
+	public DownloadQueue(String name, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath) {
 		this.name = name;
 		this.listener = listener;
 		if (queue != null) {
 			addToQueue(queue);
 		}
 		this.basePath = basePath;
+		this.cachePath = cachePath;
 	}
 	
 	private void addToQueue(Collection<Downloadable> queue) {
@@ -64,7 +66,7 @@ public class DownloadQueue {
 					@Override
 					public void run() {
 						DownloadQueue.this.iterateQueue();
-						DownloadQueue.this.listener.printMessage("Thread finished.");
+						DownloadQueue.this.listener.printMessage(name + " - Thread finished.");
 					}
 				});
 			}
@@ -76,7 +78,7 @@ public class DownloadQueue {
 		while ((entry = this.processQueue.poll()) != null) {
 			this.listener.printMessage("Downloading: " + entry.getFriendlyName());
 			try {
-				entry.download(basePath);
+				entry.download(basePath, cachePath);
 				synchronized (this.successList) {
 					this.successList.add(entry);					
 				}
@@ -91,7 +93,7 @@ public class DownloadQueue {
 		if (this.threadPoolRemain.decrementAndGet() <= 0){
 			this.listener.onQueueFinished(this);
 		}
-		this.listener.printMessage("Remaining threads: " + this.threadPoolRemain.get());
+		this.listener.printMessage(this.name + " - Remaining threads: " + this.threadPoolRemain.get());
 	}
 
 	public void updateProgress() {
@@ -156,5 +158,9 @@ public class DownloadQueue {
 		synchronized(this.failureList) {
 			return this.failureList.size();
 		}
+	}
+
+	public File getCachePath() {
+		return cachePath;
 	}
 }
