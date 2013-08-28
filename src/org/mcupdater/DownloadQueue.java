@@ -24,9 +24,11 @@ public class DownloadQueue {
 	private final File basePath;
 	private final File cachePath;
 	private boolean active;
+	private String parent;
 
-	public DownloadQueue(String name, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath) {
+	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath) {
 		this.name = name;
+		this.parent = parent;
 		this.listener = listener;
 		if (queue != null) {
 			addToQueue(queue);
@@ -162,5 +164,9 @@ public class DownloadQueue {
 
 	public File getCachePath() {
 		return cachePath;
+	}
+
+	public String getParent() {
+		return parent;
 	}
 }

@@ -63,7 +63,6 @@ public class Downloadable {
 	
 	public void download(File basePath, File cache) throws IOException {
 		printMessage("Started");
-		printMessage("NOE - " + nullOrEmpty(this.md5));
 		String localMD5 = "-";
 		File resolvedFile = null;
 		
