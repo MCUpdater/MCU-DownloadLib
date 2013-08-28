@@ -56,18 +56,18 @@ public class DownloadQueue {
 		this.active = true;
 		
 		if (this.fullList.isEmpty()) {
-			//TODO Log entry: No files to download
+			printMessage(parent + " - " + name + " - No files in queue");
 			this.listener.onQueueFinished(this);
 		} else {
 			int maxPool = executor.getMaximumPoolSize();
 			this.threadPoolRemain.set(maxPool);
-			this.listener.printMessage("Pool size: " + maxPool);
+			//this.listener.printMessage("Pool size: " + maxPool);
 			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
 				executor.submit(new Runnable(){
 					@Override
 					public void run() {
 						DownloadQueue.this.iterateQueue();
-						DownloadQueue.this.listener.printMessage(name + " - Thread finished.");
+						DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
 					}
 				});
 			}
@@ -84,17 +84,15 @@ public class DownloadQueue {
 					this.successList.add(entry);					
 				}
 				this.listener.printMessage("Download success");
-				// TODO Log entry: download success
 			} catch (Exception e) {
 				this.listener.printMessage(entry.getFriendlyName() + " failed: " + e.getMessage());
-				// TODO Log error: download failure
 				this.failureList.add(entry);
 			}
 		}
 		if (this.threadPoolRemain.decrementAndGet() <= 0){
 			this.listener.onQueueFinished(this);
 		}
-		this.listener.printMessage(this.name + " - Remaining threads: " + this.threadPoolRemain.get());
+		this.listener.printMessage(this.parent + " - " + this.name + " - Remaining threads: " + this.threadPoolRemain.get());
 	}
 
 	public void updateProgress() {
