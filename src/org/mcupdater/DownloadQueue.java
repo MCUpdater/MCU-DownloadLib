@@ -1,7 +1,6 @@
 package org.mcupdater;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -86,7 +85,7 @@ public class DownloadQueue {
 				}
 				this.listener.printMessage("Download success");
 				// TODO Log entry: download success
-			} catch (IOException e) {
+			} catch (Exception e) {
 				this.listener.printMessage(entry.getFriendlyName() + " failed: " + e.getMessage());
 				// TODO Log error: download failure
 				this.failureList.add(entry);
