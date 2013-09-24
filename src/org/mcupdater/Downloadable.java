@@ -2,7 +2,10 @@ package org.mcupdater;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+
+import LZMA.LzmaInputStream;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,6 +17,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Pack200;
 
 public class Downloadable {
 	private final String friendlyName;
@@ -103,6 +108,16 @@ public class Downloadable {
 				IOUtils.copy(input, output);
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
+				while (resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+					if (resolvedFile.getName().toLowerCase().endsWith(".lzma")) {
+						resolvedFile = extractLZMA(resolvedFile);
+						printMessage("Extracted: " + resolvedFile.getName());
+					}
+					if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+						resolvedFile = unpack(resolvedFile);
+						printMessage("Unpacked: " + resolvedFile.getName());
+					}
+				}
 				return;
 			}
 		}
@@ -114,6 +129,12 @@ public class Downloadable {
 				conn.connect();
 				if (conn.getContentLength() > 0) {
 					this.tracker.setTotal(conn.getContentLength());
+				}
+				if (localURL.getFile().toLowerCase().contains(".pack")){
+					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".pack"));
+				}
+				if (localURL.getFile().toLowerCase().contains(".lzma")){
+					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".lzma"));
 				}
 				InputStream input = new TrackingInputStream(conn.getInputStream(), this.tracker);
 				OutputStream output;
@@ -127,6 +148,23 @@ public class Downloadable {
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
 				localMD5 = getMD5(resolvedFile);
+				while (resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+					boolean changed = false;
+					if (resolvedFile.getName().toLowerCase().endsWith(".lzma")) {
+						resolvedFile = extractLZMA(resolvedFile);
+						changed = true;
+						printMessage("Extracted: " + resolvedFile.getName());
+					}
+					if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+						resolvedFile = unpack(resolvedFile);
+						changed = true;
+						printMessage("Unpacked: " + resolvedFile.getName());
+					}
+					if (changed == true){
+						localMD5 = getMD5(resolvedFile);
+						FileUtils.copyFile(resolvedFile, new File(cache, localMD5.toLowerCase()+".bin"));
+					}
+				}
 				if (nullOrEmpty(this.md5) || localMD5.equals(this.md5)) {
 					printMessage("Download finished");
 					//TODO Log entry: Download successful
@@ -169,4 +207,43 @@ public class Downloadable {
 		
 		return new String(Hex.encodeHex(hash));		
 	}
+
+    public static File extractLZMA(File compressedFile) {
+    	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".lzma", "").replace(".LZMA", ""));
+    	InputStream input = null;
+    	OutputStream output = null;
+    	try {
+    		input = new LzmaInputStream(new FileInputStream(compressedFile));
+    		output = new FileOutputStream(unpacked);
+    		byte[] buf = new byte[65536];
+    		
+    		int read = input.read(buf);
+    		while (read >= 1) {
+    			output.write(buf,0,read);
+    			read = input.read(buf);
+    		}
+    	} catch (Exception e) {
+    		throw new RuntimeException("Unable to extract lzma: " + e.getMessage());
+    	} finally {
+    		IOUtils.closeQuietly(input);
+    		IOUtils.closeQuietly(output);
+    		compressedFile.delete();
+    	}
+    	return unpacked;
+    }
+    
+    public static File unpack(File compressedFile) {
+    	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".pack", "").replace(".PACK", ""));
+    	JarOutputStream jarStream = null;
+    	try {
+    		jarStream = new JarOutputStream(new FileOutputStream(unpacked));
+    		Pack200.newUnpacker().unpack(compressedFile, jarStream);
+    	} catch (Exception e) {
+    		throw new RuntimeException("Unable to unpack: " + e);
+    	} finally {
+    		IOUtils.closeQuietly(jarStream);
+    		compressedFile.delete();
+    	}
+    	return unpacked;
+    }
 }
