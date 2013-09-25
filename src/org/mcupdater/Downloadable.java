@@ -4,8 +4,8 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-
-import LZMA.LzmaInputStream;
+import org.tukaani.xz.LZMAInputStream;
+import org.tukaani.xz.XZInputStream;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -108,7 +108,11 @@ public class Downloadable {
 				IOUtils.copy(input, output);
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
-				while (resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+				while (resolvedFile.getName().toLowerCase().endsWith(".xz") || resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+					if (resolvedFile.getName().toLowerCase().endsWith(".xz")) {
+						resolvedFile = extractXZ(resolvedFile);
+						printMessage("Extracted: " + resolvedFile.getName());
+					}
 					if (resolvedFile.getName().toLowerCase().endsWith(".lzma")) {
 						resolvedFile = extractLZMA(resolvedFile);
 						printMessage("Extracted: " + resolvedFile.getName());
@@ -136,6 +140,9 @@ public class Downloadable {
 				if (localURL.getFile().toLowerCase().contains(".lzma")){
 					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".lzma"));
 				}
+				if (localURL.getFile().toLowerCase().contains(".xz")){
+					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".xz"));
+				}
 				InputStream input = new TrackingInputStream(conn.getInputStream(), this.tracker);
 				OutputStream output;
 				File cacheFile = nullOrEmpty(this.md5) ? null : new File(cache, this.md5.toLowerCase()+".bin");
@@ -148,8 +155,13 @@ public class Downloadable {
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
 				localMD5 = getMD5(resolvedFile);
-				while (resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+				while (resolvedFile.getName().toLowerCase().endsWith(".xz") || resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
 					boolean changed = false;
+					if (resolvedFile.getName().toLowerCase().endsWith(".xz")) {
+						resolvedFile = extractXZ(resolvedFile);
+						changed = true;
+						printMessage("Extracted: " + resolvedFile.getName());
+					}
 					if (resolvedFile.getName().toLowerCase().endsWith(".lzma")) {
 						resolvedFile = extractLZMA(resolvedFile);
 						changed = true;
@@ -213,7 +225,7 @@ public class Downloadable {
     	InputStream input = null;
     	OutputStream output = null;
     	try {
-    		input = new LzmaInputStream(new FileInputStream(compressedFile));
+    		input = new LZMAInputStream(new FileInputStream(compressedFile));
     		output = new FileOutputStream(unpacked);
     		byte[] buf = new byte[65536];
     		
@@ -230,6 +242,30 @@ public class Downloadable {
     		compressedFile.delete();
     	}
     	return unpacked;
+    }
+    
+    public static File extractXZ(File compressedFile) {
+    	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".xz", "").replace(".XZ", ""));
+    	InputStream input = null;
+    	OutputStream output = null;
+    	try {
+    		input = new XZInputStream(new FileInputStream(compressedFile));
+    		output = new FileOutputStream(unpacked);
+    		byte[] buf = new byte[65536];
+    		
+    		int read = input.read(buf);
+    		while (read >= 1) {
+    			output.write(buf,0,read);
+    			read = input.read(buf);
+    		}
+    	} catch (Exception e) {
+    		throw new RuntimeException("Unable to extract xz: " + e.getMessage());
+    	} finally {
+    		IOUtils.closeQuietly(input);
+    		IOUtils.closeQuietly(output);
+    		compressedFile.delete();
+    	}
+    	return unpacked;    	
     }
     
     public static File unpack(File compressedFile) {
