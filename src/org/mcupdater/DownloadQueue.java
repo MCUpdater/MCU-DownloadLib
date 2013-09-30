@@ -24,7 +24,12 @@ public class DownloadQueue {
 	private final File cachePath;
 	private boolean active;
 	private String parent;
+	private String mcUser = null;
 
+	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath, String mcUser) {
+		this(name,parent,listener,queue,basePath,cachePath);
+		this.mcUser  = mcUser;
+	}
 	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath) {
 		this.name = name;
 		this.parent = parent;
@@ -165,5 +170,9 @@ public class DownloadQueue {
 
 	public String getParent() {
 		return parent;
+	}
+
+	public String getMCUser() {
+		return mcUser;
 	}
 }

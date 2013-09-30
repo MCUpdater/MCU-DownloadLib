@@ -205,6 +205,9 @@ public class Downloadable {
 		}
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
 		conn.setRequestProperty("User-Agent","MCU-DownloadLib/1.0");
+		if (tracker.getQueue().getMCUser() != null) {
+			conn.setRequestProperty("MC-User", tracker.getQueue().getMCUser());
+		}
 		if (referer != null) {
 			conn.setRequestProperty("Referer", referer.toString());
 		}
@@ -212,6 +215,13 @@ public class Downloadable {
 		conn.setInstanceFollowRedirects(false);
 		if (conn.getResponseCode() / 100 == 3) {
 			return redirectAndConnect(new URL(conn.getHeaderField("Location")),target);
+		}
+		String contentType = conn.getContentType();
+		if (contentType == null) {
+			printMessage("No content type found!  Download server may have issues.");
+		}
+		if (contentType.toLowerCase().startsWith("text/html")) {
+			printMessage("File is in text format.  This may be an issue if a text file is not expected.");
 		}
 		conn.connect();
 		return conn;
