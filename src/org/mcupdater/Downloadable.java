@@ -13,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
@@ -129,11 +130,6 @@ public class Downloadable {
 		while (iteratorURL.hasNext()){
 		try {
 				URL localURL = iteratorURL.next();
-				URLConnection conn = localURL.openConnection();
-				conn.connect();
-				if (conn.getContentLength() > 0) {
-					this.tracker.setTotal(conn.getContentLength());
-				}
 				if (localURL.getFile().toLowerCase().contains(".pack")){
 					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".pack"));
 				}
@@ -142,6 +138,10 @@ public class Downloadable {
 				}
 				if (localURL.getFile().toLowerCase().contains(".xz")){
 					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".xz"));
+				}
+				URLConnection conn = redirectAndConnect(localURL, null); 
+				if (conn.getContentLength() > 0) {
+					this.tracker.setTotal(conn.getContentLength());
 				}
 				InputStream input = new TrackingInputStream(conn.getInputStream(), this.tracker);
 				OutputStream output;
@@ -197,6 +197,26 @@ public class Downloadable {
 		throw new RuntimeException("Unable to download (" + this.friendlyName + ") - All known URLs failed.");
 	}
 	
+	private URLConnection redirectAndConnect(URL target, URL referer) throws IOException {
+		if (target.getProtocol().equals("file")) {
+			URLConnection conn = target.openConnection();
+			conn.connect();
+			return conn;
+		}
+		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
+		conn.setRequestProperty("User-Agent","MCU-DownloadLib/1.0");
+		if (referer != null) {
+			conn.setRequestProperty("Referer", referer.toString());
+		}
+		conn.setUseCaches(false);
+		conn.setInstanceFollowRedirects(false);
+		if (conn.getResponseCode() / 100 == 3) {
+			return redirectAndConnect(new URL(conn.getHeaderField("Location")),target);
+		}
+		conn.connect();
+		return conn;
+	}
+
 	private boolean nullOrEmpty(String input) {
 		if (input == null) {
 			return true;
