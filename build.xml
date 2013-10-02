@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE project>
+<project basedir="." default="build" name="MCU-DownloadLib">
+	<property environment="env"/>
+	<property name="debuglevel" value="source,lines,vars"/>
+	<property name="target" value="1.6"/>
+	<property name="source" value="1.6"/>
+	<path id="MCU-DownloadLib.classpath">
+		<pathelement location="bin"/>
+		<pathelement location="commons-codec-1.6.jar"/>
+		<pathelement location="commons-io-2.1.jar"/>
+		<pathelement location="xz-1.4.jar"/>
+	</path>
+	<target name="init">
+		<mkdir dir="bin"/>
+		<copy includeemptydirs="false" todir="bin">
+			<fileset dir="src">
+				<exclude name="**/*.jar"/>
+			</fileset>
+		</copy>
+	</target>
+	<target depends="build-project,package" name="build"/>
+	<target depends="init" name="build-project">
+		<echo message="${ant.project.name}: ${ant.file}"/>
+		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+			<src path="src"/>
+			<classpath refid="MCU-DownloadLib.classpath"/>
+		</javac>
+	</target>
+	<target depends="build-project" name="package">
+		<jar destfile="dist/MCU-DownloadLib.jar">
+			<fileset dir="bin"/>
+			<zipfileset excludes="META-INF/*.SF" src="commons-codec-1.6.jar"/>
+			<zipfileset excludes="META-INF/*.SF" src="commons-io-2.1.jar"/>
+			<zipfileset excludes="META-INF/*.SF" src="xz-1.4.jar"/>
+		</jar>
+	</target>
+</project>
