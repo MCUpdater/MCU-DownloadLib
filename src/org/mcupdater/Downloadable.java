@@ -219,8 +219,7 @@ public class Downloadable {
 		String contentType = conn.getContentType();
 		if (contentType == null) {
 			printMessage("No content type found!  Download server may have issues.");
-		}
-		if (contentType.toLowerCase().startsWith("text/html")) {
+		} else if (contentType.toLowerCase().startsWith("text/html")) {
 			printMessage("File is in text format.  This may be an issue if a text file is not expected.");
 		}
 		conn.connect();
