@@ -35,4 +35,9 @@
 			<zipfileset excludes="META-INF/*.SF" src="xz-1.4.jar"/>
 		</jar>
 	</target>
+	<target depends="build-project" name="package-lite">
+		<jar destfile="dist/MCU-DownloadLib.jar">
+			<fileset dir="bin"/>
+		</jar>
+	</target>
 </project>
