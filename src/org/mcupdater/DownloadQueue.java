@@ -62,14 +62,15 @@ public class DownloadQueue {
 		
 		if (this.fullList.isEmpty()) {
 			printMessage(parent + " - " + name + " - No files in queue");
+			this.threadPoolRemain.set(1);
 			executor.submit(new Runnable(){
 
 				@Override
 				public void run() {
-					// Do nothing and allow post-processing task to run
+					DownloadQueue.this.iterateQueue();
+					DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
 				}
 			});
-			this.listener.onQueueFinished(this);
 		} else {
 			int maxPool = executor.getMaximumPoolSize();
 			this.threadPoolRemain.set(maxPool);
