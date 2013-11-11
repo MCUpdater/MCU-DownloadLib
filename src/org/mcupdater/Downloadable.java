@@ -103,27 +103,31 @@ public class Downloadable {
 		if (!(cache == null) && !nullOrEmpty(this.md5)) {
 			File cacheFile = new File(cache, this.md5.toLowerCase()+".bin");
 			if (cacheFile.exists()) {
-				printMessage("Cache hit for MD5");
-				InputStream input = new TrackingInputStream(new FileInputStream(cacheFile), this.tracker);
-				FileOutputStream output = new FileOutputStream(resolvedFile);
-				IOUtils.copy(input, output);
-				IOUtils.closeQuietly(input);
-				IOUtils.closeQuietly(output);
-				while (resolvedFile.getName().toLowerCase().endsWith(".xz") || resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
-					if (resolvedFile.getName().toLowerCase().endsWith(".xz")) {
-						resolvedFile = extractXZ(resolvedFile);
-						printMessage("Extracted: " + resolvedFile.getName());
+				if (!this.md5.equalsIgnoreCase(getMD5(cacheFile))) {
+					printMessage("Cache file is invalid! Redownloading");
+				} else {
+					printMessage("Cache hit for MD5");
+					InputStream input = new TrackingInputStream(new FileInputStream(cacheFile), this.tracker);
+					FileOutputStream output = new FileOutputStream(resolvedFile);
+					IOUtils.copy(input, output);
+					IOUtils.closeQuietly(input);
+					IOUtils.closeQuietly(output);
+					while (resolvedFile.getName().toLowerCase().endsWith(".xz") || resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+						if (resolvedFile.getName().toLowerCase().endsWith(".xz")) {
+							resolvedFile = extractXZ(resolvedFile);
+							printMessage("Extracted: " + resolvedFile.getName());
+						}
+						if (resolvedFile.getName().toLowerCase().endsWith(".lzma")) {
+							resolvedFile = extractLZMA(resolvedFile);
+							printMessage("Extracted: " + resolvedFile.getName());
+						}
+						if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
+							resolvedFile = unpack(resolvedFile);
+							printMessage("Unpacked: " + resolvedFile.getName());
+						}
 					}
-					if (resolvedFile.getName().toLowerCase().endsWith(".lzma")) {
-						resolvedFile = extractLZMA(resolvedFile);
-						printMessage("Extracted: " + resolvedFile.getName());
-					}
-					if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
-						resolvedFile = unpack(resolvedFile);
-						printMessage("Unpacked: " + resolvedFile.getName());
-					}
+					return;
 				}
-				return;
 			}
 		}
 		Iterator<URL> iteratorURL = downloadURLs.iterator();
