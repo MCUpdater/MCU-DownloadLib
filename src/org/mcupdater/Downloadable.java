@@ -22,20 +22,31 @@ import java.util.jar.JarOutputStream;
 import java.util.jar.Pack200;
 
 public class Downloadable {
+	
+	public enum HashAlgorithm {
+		MD5,SHA
+	}
+	
 	private final String friendlyName;
 	private final String filename;
-	private final String md5;
+	private final HashAlgorithm algo;
+	private final String hash;
 	private long size;
 	private final List<URL> downloadURLs;
 	private final ProgressTracker tracker;
 	
 	public Downloadable(String friendlyName, String filename, String md5, long size, List<URL> downloadURLs) {
+		this(friendlyName,filename,HashAlgorithm.MD5,md5,size,downloadURLs);
+	}
+	
+	public Downloadable(String friendlyName, String filename, HashAlgorithm algo, String hash, long size, List<URL> downloadURLs) {
 		this.friendlyName = friendlyName;
 		this.filename = filename;
-		this.md5 = md5;
+		this.algo = algo;
+		this.hash = hash;
 		this.size = size;
 		this.downloadURLs = downloadURLs;
-		this.tracker = new ProgressTracker();
+		this.tracker = new ProgressTracker();		
 	}
 
 	public String getFriendlyName() {
@@ -46,8 +57,12 @@ public class Downloadable {
 		return filename;
 	}
 
-	public String getMD5() {
-		return md5;
+	public String getHash() {
+		return hash;
+	}
+
+	public HashAlgorithm getHashAlgorithm() {
+		return algo;
 	}
 
 	public long getSize() {
@@ -69,7 +84,7 @@ public class Downloadable {
 	
 	public void download(File basePath, File cache) throws IOException {
 		printMessage("Started");
-		String localMD5 = "-";
+		String localHash = "-";
 		File resolvedFile = null;
 		
 		if (basePath != null && (!basePath.isDirectory())) {
@@ -79,7 +94,7 @@ public class Downloadable {
 		resolvedFile.getParentFile().mkdirs();
 		//printMessage(resolvedFile.getAbsolutePath());
 		if (resolvedFile.isFile()) {
-			localMD5 = getMD5(resolvedFile);
+			localHash = getHash(this.algo, resolvedFile);
 			//printMessage(localMD5 + " - " + this.md5);
 		}
 		
@@ -87,26 +102,26 @@ public class Downloadable {
 			printMessage("PANIC! Can't Write!");
 			throw new RuntimeException("No write permissions for " + resolvedFile.toString() + "!");
 		}
-		if (nullOrEmpty(this.md5) && resolvedFile.isFile()) {
-			printMessage("No MD5 and file exists - No download");
+		if (nullOrEmpty(this.hash) && resolvedFile.isFile()) {
+			printMessage("No hash and file exists - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
 			return;
 		}
-		if (localMD5.equals(this.md5)) {
-			printMessage("MD5 matches - No download");
+		if (localHash.equals(this.hash)) {
+			printMessage("Hash matches - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
 			//TODO Log entry: No download necessary
 			return;
 		}
-		if (!(cache == null) && !nullOrEmpty(this.md5)) {
-			File cacheFile = new File(cache, this.md5.toLowerCase()+".bin");
+		if (!(cache == null) && !nullOrEmpty(this.hash)) {
+			File cacheFile = new File(cache, this.hash.toLowerCase()+".bin");
 			if (cacheFile.exists()) {
-				if (!this.md5.equalsIgnoreCase(getMD5(cacheFile))) {
+				if (!this.hash.equalsIgnoreCase(getHash(this.algo, cacheFile))) {
 					printMessage("Cache file is invalid! Redownloading");
 				} else {
-					printMessage("Cache hit for MD5");
+					printMessage("Cache hit for hash");
 					InputStream input = new TrackingInputStream(new FileInputStream(cacheFile), this.tracker);
 					FileOutputStream output = new FileOutputStream(resolvedFile);
 					IOUtils.copy(input, output);
@@ -149,8 +164,8 @@ public class Downloadable {
 				}
 				InputStream input = new TrackingInputStream(conn.getInputStream(), this.tracker);
 				OutputStream output;
-				File cacheFile = nullOrEmpty(this.md5) ? null : new File(cache, this.md5.toLowerCase()+".bin");
-				if (!(cache == null) && !nullOrEmpty(this.md5)) {
+				File cacheFile = nullOrEmpty(this.hash) ? null : new File(cache, this.hash.toLowerCase()+".bin");
+				if (!(cache == null) && !nullOrEmpty(this.hash)) {
 					output = new MirrorOutputStream(resolvedFile, cacheFile);
 				} else {
 					output = new FileOutputStream(resolvedFile);
@@ -158,7 +173,7 @@ public class Downloadable {
 				IOUtils.copy(input, output);
 				IOUtils.closeQuietly(input);
 				IOUtils.closeQuietly(output);
-				localMD5 = getMD5(resolvedFile);
+				localHash = getHash(this.algo, resolvedFile);
 				while (resolvedFile.getName().toLowerCase().endsWith(".xz") || resolvedFile.getName().toLowerCase().endsWith(".lzma") || resolvedFile.getName().toLowerCase().endsWith(".pack")) {
 					boolean changed = false;
 					if (resolvedFile.getName().toLowerCase().endsWith(".xz")) {
@@ -177,16 +192,16 @@ public class Downloadable {
 						printMessage("Unpacked: " + resolvedFile.getName());
 					}
 					if (changed == true){
-						localMD5 = getMD5(resolvedFile);
-						FileUtils.copyFile(resolvedFile, new File(cache, localMD5.toLowerCase()+".bin"));
+						localHash = getHash(this.algo, resolvedFile);
+						FileUtils.copyFile(resolvedFile, new File(cache, localHash.toLowerCase()+".bin"));
 					}
 				}
-				if (nullOrEmpty(this.md5) || localMD5.equals(this.md5)) {
+				if (nullOrEmpty(this.hash) || localHash.equals(this.hash)) {
 					printMessage("Download finished");
 					//TODO Log entry: Download successful
 					return;
 				} else {
-					printMessage("MD5 mismatch after download!");
+					printMessage("Hash mismatch after download!");
 					if (cacheFile.exists()) { cacheFile.delete(); }
 					return;  // Warn about MD5 mismatches, delete bad cache files, allow the download regardless.
 				}
@@ -244,10 +259,16 @@ public class Downloadable {
 		this.getTracker().getQueue().printMessage(this.filename + " - " + msg);
 	}
 
-	public static String getMD5(File file) throws IOException {
+	public static String getHash(HashAlgorithm algo, File file) throws IOException {
 		byte[] hash;
 		InputStream is = new FileInputStream(file);
-		hash = DigestUtils.md5(is);
+		if (algo == HashAlgorithm.MD5){
+			hash = DigestUtils.md5(is);
+		} else if (algo == HashAlgorithm.SHA){
+			hash = DigestUtils.sha(is);
+		} else {
+			hash = new byte[0];
+		}
 		is.close();
 		
 		return new String(Hex.encodeHex(hash));		
