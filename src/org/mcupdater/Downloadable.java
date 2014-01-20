@@ -7,16 +7,10 @@ import org.apache.commons.io.IOUtils;
 import org.tukaani.xz.LZMAInputStream;
 import org.tukaani.xz.XZInputStream;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Pack200;
@@ -85,7 +79,7 @@ public class Downloadable {
 	public void download(File basePath, File cache) throws IOException {
 		printMessage("Started");
 		String localHash = "-";
-		File resolvedFile = null;
+		File resolvedFile;
 		
 		if (basePath != null && (!basePath.isDirectory())) {
 			basePath.mkdirs();			
@@ -145,26 +139,25 @@ public class Downloadable {
 				}
 			}
 		}
-		Iterator<URL> iteratorURL = downloadURLs.iterator();
-		while (iteratorURL.hasNext()){
-		try {
-				URL localURL = iteratorURL.next();
-				if (localURL.getFile().toLowerCase().contains(".pack")){
+		for (URL downloadURL : downloadURLs) {
+			try {
+				URL localURL = downloadURL;
+				if (localURL.getFile().toLowerCase().contains(".pack")) {
 					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".pack"));
 				}
-				if (localURL.getFile().toLowerCase().contains(".lzma")){
+				if (localURL.getFile().toLowerCase().contains(".lzma")) {
 					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".lzma"));
 				}
-				if (localURL.getFile().toLowerCase().contains(".xz")){
+				if (localURL.getFile().toLowerCase().contains(".xz")) {
 					resolvedFile = new File(resolvedFile.getAbsolutePath().concat(".xz"));
 				}
-				URLConnection conn = redirectAndConnect(localURL, null); 
+				URLConnection conn = redirectAndConnect(localURL, null);
 				if (conn.getContentLength() > 0) {
 					this.tracker.setTotal(conn.getContentLength());
 				}
 				InputStream input = new TrackingInputStream(conn.getInputStream(), this.tracker);
 				OutputStream output;
-				File cacheFile = nullOrEmpty(this.hash) ? null : new File(cache, this.hash.toLowerCase()+".bin");
+				File cacheFile = nullOrEmpty(this.hash) ? null : new File(cache, this.hash.toLowerCase() + ".bin");
 				if (!(cache == null) && !nullOrEmpty(this.hash)) {
 					output = new MirrorOutputStream(resolvedFile, cacheFile);
 				} else {
@@ -191,9 +184,9 @@ public class Downloadable {
 						changed = true;
 						printMessage("Unpacked: " + resolvedFile.getName());
 					}
-					if (changed == true){
+					if (changed) {
 						localHash = getHash(this.algo, resolvedFile);
-						FileUtils.copyFile(resolvedFile, new File(cache, localHash.toLowerCase()+".bin"));
+						FileUtils.copyFile(resolvedFile, new File(cache, localHash.toLowerCase() + ".bin"));
 					}
 				}
 				if (nullOrEmpty(this.hash) || localHash.equals(this.hash)) {
@@ -202,7 +195,9 @@ public class Downloadable {
 					return;
 				} else {
 					printMessage("Hash mismatch after download!");
-					if (cacheFile.exists()) { cacheFile.delete(); }
+					if (cacheFile.exists()) {
+						cacheFile.delete();
+					}
 					return;  // Warn about MD5 mismatches, delete bad cache files, allow the download regardless.
 				}
 			} catch (IOException e) {
@@ -248,11 +243,7 @@ public class Downloadable {
 	private boolean nullOrEmpty(String input) {
 		if (input == null) {
 			return true;
-		} else if (input.isEmpty()) {
-			return true;
-		} else {
-			return false;
-		}
+		} else return input.isEmpty();
 	}
 
 	private void printMessage(String msg) {
