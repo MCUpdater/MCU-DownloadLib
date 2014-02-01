@@ -241,9 +241,7 @@ public class Downloadable {
 	}
 
 	private boolean nullOrEmpty(String input) {
-		if (input == null) {
-			return true;
-		} else return input.isEmpty();
+		return input == null || input.isEmpty();
 	}
 
 	private void printMessage(String msg) {
