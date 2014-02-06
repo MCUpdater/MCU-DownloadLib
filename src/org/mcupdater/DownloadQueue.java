@@ -68,7 +68,7 @@ public class DownloadQueue {
 				@Override
 				public void run() {
 					DownloadQueue.this.iterateQueue();
-					DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
+					//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
 				}
 			});
 		} else {
@@ -80,7 +80,7 @@ public class DownloadQueue {
 					@Override
 					public void run() {
 						DownloadQueue.this.iterateQueue();
-						DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
+						//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
 					}
 				});
 			}
@@ -96,7 +96,7 @@ public class DownloadQueue {
 				synchronized (this.successList) {
 					this.successList.add(entry);					
 				}
-				this.listener.printMessage("Download success");
+				//this.listener.printMessage("Download success");
 			} catch (Exception e) {
 				this.listener.printMessage(entry.getFriendlyName() + " failed: " + e.getMessage());
 				this.failureList.add(entry);
@@ -105,7 +105,7 @@ public class DownloadQueue {
 		if (this.threadPoolRemain.decrementAndGet() <= 0){
 			this.listener.onQueueFinished(this);
 		}
-		this.listener.printMessage(this.parent + " - " + this.name + " - Remaining threads: " + this.threadPoolRemain.get());
+		//this.listener.printMessage(this.parent + " - " + this.name + " - Remaining threads: " + this.threadPoolRemain.get());
 	}
 
 	public void updateProgress() {
