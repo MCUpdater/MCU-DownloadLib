@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class DownloadQueue {
 
-	private final Queue<Downloadable> processQueue = new ConcurrentLinkedQueue<>();
+	private final Queue<Downloadable> processQueue = new ConcurrentLinkedQueue<Downloadable>();
 	private final List<Downloadable> fullList = Collections.synchronizedList(new ArrayList<Downloadable>());
 	private final List<Downloadable> failureList = Collections.synchronizedList(new ArrayList<Downloadable>());
 	private final List<Downloadable> successList = Collections.synchronizedList(new ArrayList<Downloadable>());
