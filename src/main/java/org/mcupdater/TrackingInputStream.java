@@ -6,7 +6,7 @@ import java.io.InputStream;
 
 public class TrackingInputStream extends FilterInputStream {
 
-	private ProgressTracker tracker;
+	private final ProgressTracker tracker;
 
 	protected TrackingInputStream(InputStream in, ProgressTracker tracker) {
 		super(in);

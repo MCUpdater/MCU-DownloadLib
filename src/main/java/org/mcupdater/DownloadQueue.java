@@ -23,7 +23,7 @@ public class DownloadQueue {
 	private final File basePath;
 	private final File cachePath;
 	private boolean active;
-	private String parent;
+	private final String parent;
 	private String mcUser = null;
 
 	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath, String mcUser) {

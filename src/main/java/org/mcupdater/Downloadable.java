@@ -248,6 +248,7 @@ public class Downloadable {
 		this.getTracker().getQueue().printMessage(this.filename + " - " + msg);
 	}
 
+	@SuppressWarnings("deprecation")
 	public static String getHash(HashAlgorithm algo, File file) throws IOException {
 		byte[] hash;
 		InputStream is = new FileInputStream(file);
