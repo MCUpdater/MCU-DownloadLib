@@ -1,4 +1,4 @@
-package org.mcupdater;
+package org.mcupdater.downloadlib;
 
 import java.io.File;
 import java.io.FileNotFoundException;

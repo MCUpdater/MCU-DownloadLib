@@ -1,4 +1,4 @@
-package org.mcupdater;
+package org.mcupdater.downloadlib;
 
 public class ProgressTracker {
 

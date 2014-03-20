@@ -1,5 +1,6 @@
-package org.mcupdater;
+package org.mcupdater.downloadlib;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -218,12 +219,16 @@ public class Downloadable {
 			return conn;
 		}
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
-		conn.setRequestProperty("User-Agent","MCU-DownloadLib/1.0");
+		conn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
 		if (tracker.getQueue().getMCUser() != null) {
 			conn.setRequestProperty("MC-User", tracker.getQueue().getMCUser());
 		}
 		if (referer != null) {
 			conn.setRequestProperty("Referer", referer.toString());
+		}
+		if (target.getUserInfo() != null) {
+			String basicAuth = "Basic " + new String(new Base64().encode(target.getUserInfo().getBytes()));
+			conn.setRequestProperty("Authorization", basicAuth);
 		}
 		conn.setUseCaches(false);
 		conn.setInstanceFollowRedirects(false);
