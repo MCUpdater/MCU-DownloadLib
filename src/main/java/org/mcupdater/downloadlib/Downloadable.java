@@ -230,6 +230,29 @@ public class Downloadable {
 			String basicAuth = "Basic " + new String(new Base64().encode(target.getUserInfo().getBytes()));
 			conn.setRequestProperty("Authorization", basicAuth);
 		}
+		if (target.getHost().equals("www.mediafire.com")) {
+			try {
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				IOUtils.copy(conn.getInputStream(), baos);
+				byte[] bytes = baos.toByteArray();
+				Reader in = new InputStreamReader(new ByteArrayInputStream(bytes));
+				char[] buffer = new char[819200];
+				StringBuilder content = new StringBuilder();
+				while (in.read(buffer) != -1) {
+					content.append(buffer);
+				}
+				in.close();
+				int key = content.toString().indexOf("\"", content.toString().indexOf("kNO"));
+				int after = content.toString().indexOf("\"", key + 1);
+				String newUrl = content.toString().substring(key + 1, after);
+				System.out.println("Mediafire response - " + newUrl);
+				if (newUrl.toLowerCase().startsWith("http")) {
+					return redirectAndConnect(new URL(newUrl), target);
+				}
+			} catch (java.io.IOException e1) {
+				e1.printStackTrace();
+			}
+		}
 		conn.setUseCaches(false);
 		conn.setInstanceFollowRedirects(false);
 		if (conn.getResponseCode() / 100 == 3) {
@@ -239,7 +262,49 @@ public class Downloadable {
 		if (contentType == null) {
 			printMessage("No content type found!  Download server may have issues.");
 		} else if (contentType.toLowerCase().startsWith("text/html")) {
-			printMessage("File is in text format.  This may be an issue if a text file is not expected.");
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			IOUtils.copy(conn.getInputStream(), baos);
+			byte[] bytes = baos.toByteArray();
+			Reader in = new InputStreamReader(new ByteArrayInputStream(bytes));
+			char[] buffer = new char[819200];
+			StringBuilder content = new StringBuilder();
+			while (in.read(buffer) != -1) {
+				content.append(buffer);
+			}
+			in.close();
+			if (target.getHost().equals("adf.ly") && !target.toString().startsWith("https://adf.ly/go.php")) {
+				int key = content.toString().indexOf("'", content.toString().indexOf("ysmm"));
+				int after = content.toString().indexOf("'", key+1);
+				String raw = content.toString().substring(key+1, after);
+				StringBuilder forward = new StringBuilder();
+				StringBuilder backward = new StringBuilder();
+				for (int i=0; i < raw.length(); i++) {
+					if (i % 2 == 0) {
+						forward.append(raw.charAt(i));
+					} else {
+						backward.insert(0, raw.charAt(i));
+					}
+				}
+				String rebuilt = forward.toString() + backward.toString();
+				byte[] decode = Base64.decodeBase64(rebuilt);
+				byte[] decode2 = new byte[decode.length-2];
+				System.arraycopy(decode, 2, decode2, 0, decode.length - 2);
+				String newUrl = new String(decode2);
+				System.out.println("Adf.ly response - " + newUrl);
+				if (newUrl.toLowerCase().startsWith("http")) {
+					return redirectAndConnect(new URL(newUrl), target);
+				}
+			}
+			//Check for META redirect
+			if (content.toString().toLowerCase().replaceAll(" ", "").contains("http-equiv=\"refresh\"")) {
+				int key = content.toString().toLowerCase().indexOf("http", content.toString().toLowerCase().indexOf("url", content.toString().toLowerCase().indexOf("http-equiv")));
+				if (key != -1) {
+					String strDelim = (content.toString().substring(content.toString().toLowerCase().indexOf("url", content.toString().toLowerCase().indexOf("http-equiv")), key).contains("'")) ? "'" : "\"";
+					String newUrl = content.toString().substring(key, content.toString().indexOf(strDelim, key));
+					return redirectAndConnect(new URL(newUrl), target);
+				}
+			}
+			printMessage("File is in html format.  This may be an issue if an html file is not expected.");
 		}
 		conn.connect();
 		return conn;
