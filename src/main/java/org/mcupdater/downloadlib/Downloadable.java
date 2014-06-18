@@ -218,6 +218,15 @@ public class Downloadable {
 			conn.connect();
 			return conn;
 		}
+		if (target.getHost().toLowerCase().equals("www.dropbox.com")) {
+			if (!target.toString().toLowerCase().contains("dl=1")) {
+				if (target.toString().contains("?")) {
+					target = new URL(target.toString().concat("&dl=1"));
+				} else {
+					target = new URL(target.toString().concat("?dl=1"));
+				}
+			}
+		}
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
 		conn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
 		if (tracker.getQueue().getMCUser() != null) {
