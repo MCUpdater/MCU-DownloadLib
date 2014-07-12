@@ -13,8 +13,8 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="Gradle: commons-codec-1.9" level="project" />
-    <orderEntry type="library" exported="" name="Gradle: xz-1.4" level="project" />
     <orderEntry type="library" exported="" name="Gradle: commons-io-2.4" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: xz-1.4" level="project" />
   </component>
 </module>
 
