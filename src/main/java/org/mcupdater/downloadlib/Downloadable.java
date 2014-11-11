@@ -264,8 +264,18 @@ public class Downloadable {
 		}
 		conn.setUseCaches(false);
 		conn.setInstanceFollowRedirects(false);
+		/* Uncomment for header testing
+		System.out.println(target);
+		for(Map.Entry<String,List<String>> field : conn.getHeaderFields().entrySet()) {
+			System.out.println(field.getKey() + ": " + field.getValue().toString());
+		}
+		*/
 		if (conn.getResponseCode() / 100 == 3) {
-			return redirectAndConnect(new URL(conn.getHeaderField("Location")),target);
+			String newTarget = conn.getHeaderField("Location");
+			if (newTarget.startsWith("//")) { //Handling of schemeless URLs - protocol comes from context.
+				newTarget = target.getProtocol() + ":" + newTarget;
+			}
+			return redirectAndConnect(new URL(newTarget),target);
 		}
 		String contentType = conn.getContentType();
 		if (contentType == null) {
