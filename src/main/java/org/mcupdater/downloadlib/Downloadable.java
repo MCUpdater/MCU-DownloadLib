@@ -314,6 +314,13 @@ public class Downloadable {
 					return redirectAndConnect(new URL(newUrl), target);
 				}
 			}
+			if (target.getHost().equals("optifine.net") && !target.toString().contains("downloadx")) {
+				int key = content.toString().indexOf("downloadx");
+				int after = content.toString().indexOf("\"", key);
+				String raw = content.toString().substring(key, after);
+				String newUrl = target.getProtocol() + "://optifine.net/" + raw;
+				return redirectAndConnect(new URL(newUrl), target);
+			}
 			//Check for META redirect
 			if (content.toString().toLowerCase().replaceAll(" ", "").contains("http-equiv=\"refresh\"")) {
 				int key = content.toString().toLowerCase().indexOf("http", content.toString().toLowerCase().indexOf("url", content.toString().toLowerCase().indexOf("http-equiv")));
