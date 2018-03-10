@@ -87,8 +87,10 @@ public class TestForm {
 							backward.insert(0, raw.charAt(i));
 						}
 					}
+					System.out.println(forward.toString());
+					System.out.println(backward.toString());
 					String rebuilt = forward.toString() + backward.toString();
-					txtContent.append(raw + "\n");
+					txtContent.append(raw + "\n======\n");
 					txtContent.append(rebuilt + "\n");
 					byte[] decode = Base64.decodeBase64(rebuilt);
 					byte[] decode2 = new byte[decode.length - 2];
