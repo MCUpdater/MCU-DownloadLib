@@ -44,4 +44,6 @@ public class Version
 	
 	public static final String API_VERSION = MAJOR_VERSION + "." + MINOR_VERSION;
 	public static final String VERSION = "v"+MAJOR_VERSION+"."+MINOR_VERSION+"."+BUILD_VERSION;
+
+	public static final String USER_AGENT = "MCU-DownloadLib/" + API_VERSION;
 }

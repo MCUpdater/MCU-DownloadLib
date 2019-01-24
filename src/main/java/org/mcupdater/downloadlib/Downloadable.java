@@ -228,7 +228,7 @@ public class Downloadable {
 			}
 		}
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
-		conn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
+		conn.setRequestProperty("User-Agent",Version.USER_AGENT);
 		if (tracker.getQueue().getMCUser() != null) {
 			conn.setRequestProperty("MC-User", tracker.getQueue().getMCUser());
 		}
