@@ -204,6 +204,9 @@ public class Downloadable {
 			} catch (IOException e) {
 				//TODO Log warning: Error during connection
 				printMessage(e.getMessage());
+				StringWriter stack = new StringWriter();
+				e.printStackTrace(new PrintWriter(stack));
+				printMessage(stack.toString());
 			} catch (Exception e) {
 				printMessage("Something happened! - " + e.getMessage());
 			}
@@ -227,9 +230,11 @@ public class Downloadable {
 				}
 			}
 		}
+		//System.out.println("DEBUG: " + target.toExternalForm());
+		target = new URL(target.toString().replace(" ","%20").replace("'","%27"));
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
 		conn.setRequestProperty("User-Agent",Version.USER_AGENT);
-		if (tracker.getQueue().getMCUser() != null) {
+		if (tracker.getQueue() != null && tracker.getQueue().getMCUser() != null) {
 			conn.setRequestProperty("MC-User", tracker.getQueue().getMCUser());
 		}
 		if (referer != null) {
@@ -341,7 +346,11 @@ public class Downloadable {
 	}
 
 	private void printMessage(String msg) {
-		this.getTracker().getQueue().printMessage(this.filename + " - " + msg);
+		try {
+			this.getTracker().getQueue().printMessage(this.filename + " - " + msg);
+		} catch (NullPointerException npe) {
+			System.out.println(this.filename + " - " + msg);
+		}
 	}
 
 	@SuppressWarnings("deprecation")
