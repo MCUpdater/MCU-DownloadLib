@@ -10,14 +10,19 @@ import java.net.URL;
 public class DownloadUtil {
 	public static boolean get(final URL url, final File dest) {
 		try {
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setRequestProperty("User-Agent", Version.USER_AGENT);
+			HttpURLConnection conn = getMCUHttpURLConnection(url);
 			conn.connect();
 			FileUtils.copyInputStreamToFile(conn.getInputStream(), dest);
 			return true;
 		} catch( IOException e ) {
 			return false;
 		}
+	}
+
+	public static HttpURLConnection getMCUHttpURLConnection(URL url) throws IOException {
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		conn.setRequestProperty("User-Agent", Version.USER_AGENT);
+		return conn;
 	}
 
 	public static File getToTemp(final URL url, final String prefix, final String suffix) {

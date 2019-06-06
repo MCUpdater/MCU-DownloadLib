@@ -230,8 +230,9 @@ public class Downloadable {
 				}
 			}
 		}
-		//System.out.println("DEBUG: " + target.toExternalForm());
-		target = new URL(target.toString().replace(" ","%20").replace("'","%27"));
+		//System.out.println("BEFORE: " + target.toExternalForm());
+		target = new URL(escapeURL(target.toString()));
+		//System.out.println(" AFTER: " + target.toExternalForm());
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
 		conn.setRequestProperty("User-Agent",Version.USER_AGENT);
 		if (tracker.getQueue() != null && tracker.getQueue().getMCUser() != null) {
@@ -339,6 +340,15 @@ public class Downloadable {
 		}
 		conn.connect();
 		return conn;
+	}
+
+	private String escapeURL(String source) {
+		return source
+				.replace(" ","%20")
+				.replace("'","%27")
+				.replace("[","%5B")
+				.replace("]","%5D")
+		;
 	}
 
 	private boolean nullOrEmpty(String input) {
