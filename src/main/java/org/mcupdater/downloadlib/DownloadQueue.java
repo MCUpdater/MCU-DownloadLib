@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.lang.Thread.currentThread;
+import static java.lang.Thread.sleep;
+
 public class DownloadQueue {
 
 	private final Queue<Downloadable> processQueue = new ConcurrentLinkedQueue<Downloadable>();
@@ -25,10 +28,13 @@ public class DownloadQueue {
 	private boolean active;
 	private final String parent;
 	private String mcUser = null;
+	private TaskableExecutor executor = null;
+	private DownloadQueue self;
 
 	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath, String mcUser) {
 		this(name,parent,listener,queue,basePath,cachePath);
 		this.mcUser  = mcUser;
+		this.self = this;
 	}
 	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath) {
 		this.name = name;
@@ -39,6 +45,7 @@ public class DownloadQueue {
 		}
 		this.basePath = basePath;
 		this.cachePath = cachePath;
+		this.self = this;
 	}
 	
 	private void addToQueue(Collection<Downloadable> queue) {
@@ -54,16 +61,19 @@ public class DownloadQueue {
 		}
 	}
 	
-	public void processQueue(ThreadPoolExecutor executor) {
+	public void processQueue(ThreadPoolExecutor tpExecutor) {
 		if (this.active){
 			throw new IllegalStateException("Queue is already in progress");
 		}
 		this.active = true;
+		if (tpExecutor instanceof TaskableExecutor) {
+			this.executor = (TaskableExecutor) tpExecutor;
+		}
 		
 		if (this.fullList.isEmpty()) {
 			printMessage(parent + " - " + name + " - No files in queue");
 			this.threadPoolRemain.set(1);
-			executor.submit(new Runnable(){
+			tpExecutor.submit(new Runnable(){
 
 				@Override
 				public void run() {
@@ -72,19 +82,35 @@ public class DownloadQueue {
 				}
 			});
 		} else {
-			int maxPool = executor.getMaximumPoolSize();
+			int maxPool = tpExecutor.getMaximumPoolSize();
 			this.threadPoolRemain.set(maxPool);
 			//this.listener.printMessage("Pool size: " + maxPool);
 			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
-				executor.submit(new Runnable(){
-					@Override
-					public void run() {
-						DownloadQueue.this.iterateQueue();
-						//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
-					}
+				tpExecutor.submit(() -> {
+					DownloadQueue.this.iterateQueue();
+					//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
 				});
 			}
 		}
+		Thread postMonitor = new Thread(() -> {
+			System.out.println("DownloadQueue - postMonitor start - " + name);
+			int count = 0;
+			while (!executor.isTaskCompleted()) {
+				try {
+					Thread.sleep(10);
+					count++;
+					if (count >= 1000) {
+						System.out.println("Waiting - " + name);
+						count = 0;
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			System.out.println("DownloadQueue - Finished - " + name);
+			listener.onQueueFinished(self);
+		});
+		postMonitor.start();
 	}
 
 	protected void iterateQueue() {
@@ -102,9 +128,12 @@ public class DownloadQueue {
 				this.failureList.add(entry);
 			}
 		}
+/*
 		if (this.threadPoolRemain.decrementAndGet() <= 0){
+			System.out.println("DownloadQueue - No more threads");
 			this.listener.onQueueFinished(this);
 		}
+ */
 		//this.listener.printMessage(this.parent + " - " + this.name + " - Remaining threads: " + this.threadPoolRemain.get());
 	}
 
@@ -117,7 +146,7 @@ public class DownloadQueue {
 	}
 	
 	public boolean isFinished() {
-		return this.active && (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0);
+		return this.active && (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0) && this.executor.isShutdown();
 	}
 	
 	public float getProgress() {
@@ -182,5 +211,9 @@ public class DownloadQueue {
 
 	public String getMCUser() {
 		return mcUser;
+	}
+
+	public boolean isComplete() {
+		return executor.isShutdown();
 	}
 }
