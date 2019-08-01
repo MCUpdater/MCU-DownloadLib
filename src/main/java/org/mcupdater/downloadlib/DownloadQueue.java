@@ -146,7 +146,7 @@ public class DownloadQueue {
 	}
 	
 	public boolean isFinished() {
-		return this.active && (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0) && this.executor.isShutdown();
+		return (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0) && this.executor.isShutdown();
 	}
 	
 	public float getProgress() {

@@ -20,7 +20,9 @@ public class TaskableExecutor extends ThreadPoolExecutor {
 	@Override
 	public void afterExecute(Runnable task, Throwable thrown) {
 		super.afterExecute(task, thrown);
+		System.out.println("Checking for post-download action thread.");
 		if (this.getQueue().size() == 0){
+			System.out.println("Starting thread.");
 			Thread taskThread = new Thread(after);
 			taskThread.start();
 			while (taskThread.isAlive()) {
