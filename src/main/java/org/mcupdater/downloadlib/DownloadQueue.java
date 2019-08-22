@@ -92,25 +92,29 @@ public class DownloadQueue {
 				});
 			}
 		}
-		Thread postMonitor = new Thread(() -> {
-			System.out.println("DownloadQueue - postMonitor start - " + name);
-			int count = 0;
-			while (!executor.isTaskCompleted()) {
-				try {
-					Thread.sleep(10);
-					count++;
-					if (count >= 1000) {
-						System.out.println("Waiting - " + name);
-						count = 0;
+		if (executor != null) {
+			Thread postMonitor = new Thread(() -> {
+				System.out.println("DownloadQueue - postMonitor start - " + name);
+				int count = 0;
+				while (!executor.isTaskCompleted()) {
+					try {
+						Thread.sleep(10);
+						count++;
+						if (count >= 1000) {
+							System.out.println("Waiting - " + name);
+							count = 0;
+						}
+					} catch (InterruptedException e) {
+						e.printStackTrace();
 					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
 				}
-			}
-			System.out.println("DownloadQueue - Finished - " + name);
+				System.out.println("DownloadQueue - Finished - " + name);
+				listener.onQueueFinished(self);
+			});
+			postMonitor.start();
+		} else {
 			listener.onQueueFinished(self);
-		});
-		postMonitor.start();
+		}
 	}
 
 	protected void iterateQueue() {
