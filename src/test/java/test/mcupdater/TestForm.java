@@ -108,8 +108,12 @@ public class TestForm {
 				try {
 					URLConnection cn = new URL(txtURL.getText()).openConnection();
 					cn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
+					cn.setRequestProperty("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+					for (Map.Entry entry : cn.getRequestProperties().entrySet()) {
+						System.out.println("[Request] " + entry.getKey() + ": " + entry.getValue());
+					}
 					for (Map.Entry entry : cn.getHeaderFields().entrySet()) {
-						System.out.println(entry.getKey() + ": " + entry.getValue());
+						System.out.println("[Response] " +entry.getKey() + ": " + entry.getValue());
 					}
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
 					IOUtils.copy(cn.getInputStream(), baos);
