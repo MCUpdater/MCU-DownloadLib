@@ -6,11 +6,17 @@ import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 
 public class DownloadUtil {
 	public static boolean get(final URL url, final File dest) {
 		try {
-			HttpURLConnection conn = getMCUHttpURLConnection(url);
+			URLConnection conn;
+			if (url.getProtocol().startsWith("http")) {
+				conn = getMCUHttpURLConnection(url);
+			} else {
+				conn = url.openConnection();
+			}
 			conn.connect();
 			FileUtils.copyInputStreamToFile(conn.getInputStream(), dest);
 			return true;
