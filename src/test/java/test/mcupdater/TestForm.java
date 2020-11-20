@@ -2,6 +2,7 @@ package test.mcupdater;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
+import org.mcupdater.downloadlib.Downloadable;
 import org.mcupdater.downloadlib.Version;
 
 import javax.swing.*;
@@ -14,6 +15,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 
 public class TestForm {
@@ -106,15 +109,18 @@ public class TestForm {
 			public void actionPerformed(ActionEvent e) {
 				txtContent.setText("");
 				try {
-					URLConnection cn = new URL(txtURL.getText()).openConnection();
-					cn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
-					cn.setRequestProperty("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+					Downloadable testDownload = new Downloadable("test","test.dat","",0, Arrays.asList(new URL(txtURL.getText())));
+					URLConnection cn = testDownload.redirectAndConnect(new URL(txtURL.getText()),null);
+					//cn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
+					//cn.setRequestProperty("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+					/*
 					for (Map.Entry entry : cn.getRequestProperties().entrySet()) {
 						System.out.println("[Request] " + entry.getKey() + ": " + entry.getValue());
 					}
 					for (Map.Entry entry : cn.getHeaderFields().entrySet()) {
 						System.out.println("[Response] " +entry.getKey() + ": " + entry.getValue());
 					}
+					*/
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
 					IOUtils.copy(cn.getInputStream(), baos);
 					byte[] bytes = baos.toByteArray();
