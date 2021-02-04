@@ -12,7 +12,7 @@ public class TaskableExecutor extends ThreadPoolExecutor {
 	private boolean taskCompleted = false;
 
 	public TaskableExecutor(int threads, Runnable after){
-		super(0,threads,0L,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+		super(0,threads,500L,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 		this.after = after;
 		if (after == null) taskCompleted = true;
 	}

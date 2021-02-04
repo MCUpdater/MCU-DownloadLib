@@ -61,19 +61,23 @@ public class DownloadQueue {
 		}
 	}
 	
-	public void processQueue(ThreadPoolExecutor tpExecutor) {
+	public void processQueue() {
 		if (this.active){
 			throw new IllegalStateException("Queue is already in progress");
 		}
 		this.active = true;
-		if (tpExecutor instanceof TaskableExecutor) {
-			this.executor = (TaskableExecutor) tpExecutor;
-		}
+		this.executor = new TaskableExecutor(1, new Runnable() {
+
+				@Override
+				public void run() {
+					listener.onQueueFinished(self);
+				}
+			});
 		
 		if (this.fullList.isEmpty()) {
 			printMessage(parent + " - " + name + " - No files in queue");
 			this.threadPoolRemain.set(1);
-			tpExecutor.submit(new Runnable(){
+			executor.submit(new Runnable(){
 
 				@Override
 				public void run() {
@@ -82,11 +86,11 @@ public class DownloadQueue {
 				}
 			});
 		} else {
-			int maxPool = tpExecutor.getMaximumPoolSize();
+			int maxPool = executor.getMaximumPoolSize();
 			this.threadPoolRemain.set(maxPool);
 			//this.listener.printMessage("Pool size: " + maxPool);
 			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
-				tpExecutor.submit(() -> {
+				executor.submit(() -> {
 					DownloadQueue.this.iterateQueue();
 					//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
 				});
@@ -109,7 +113,6 @@ public class DownloadQueue {
 					}
 				}
 				System.out.println("DownloadQueue - Finished - " + name);
-				listener.onQueueFinished(self);
 			});
 			postMonitor.start();
 		} else {
