@@ -215,7 +215,7 @@ public class Downloadable {
 		throw new RuntimeException("Unable to download (" + this.friendlyName + ") - All known URLs failed.");
 	}
 	
-	private URLConnection redirectAndConnect(URL target, URL referer) throws IOException {
+	public URLConnection redirectAndConnect(URL target, URL referer) throws IOException {
 		if (target.getProtocol().equals("file")) {
 			URLConnection conn = target.openConnection();
 			conn.connect();
@@ -232,7 +232,7 @@ public class Downloadable {
 		}
 		//System.out.println("BEFORE: " + target.toExternalForm());
 		target = new URL(escapeURL(target.toString()));
-		//System.out.println(" AFTER: " + target.toExternalForm());
+		System.out.println(" AFTER: " + target.toExternalForm());
 		HttpURLConnection conn = (HttpURLConnection) target.openConnection();
 		conn.setRequestProperty("User-Agent",Version.USER_AGENT);
 		if (tracker.getQueue() != null && tracker.getQueue().getMCUser() != null) {
@@ -322,7 +322,7 @@ public class Downloadable {
 			}
 			if (target.getHost().equals("optifine.net") && !target.toString().contains("downloadx")) {
 				int key = content.toString().indexOf("downloadx");
-				int after = content.toString().indexOf("\"", key);
+				int after = content.toString().indexOf("'", key);
 				String raw = content.toString().substring(key, after);
 				String newUrl = target.getProtocol() + "://optifine.net/" + raw;
 				return redirectAndConnect(new URL(newUrl), target);
@@ -342,7 +342,7 @@ public class Downloadable {
 		return conn;
 	}
 
-	private String escapeURL(String source) {
+	public String escapeURL(String source) {
 		return source
 				.replace(" ","%20")
 				.replace("'","%27")
