@@ -4,6 +4,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOExceptionWithCause;
 import org.apache.commons.io.IOUtils;
 import org.tukaani.xz.LZMAInputStream;
 import org.tukaani.xz.XZInputStream;
@@ -14,7 +15,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
 import java.util.jar.JarOutputStream;
-import java.util.jar.Pack200;
 
 public class Downloadable {
 	
@@ -132,8 +132,9 @@ public class Downloadable {
 							printMessage("Extracted: " + resolvedFile.getName());
 						}
 						if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
-							resolvedFile = unpack(resolvedFile);
-							printMessage("Unpacked: " + resolvedFile.getName());
+							//resolvedFile = unpack(resolvedFile);
+							printMessage("FAILURE Pack200 no longer supported: " + resolvedFile.getName());
+							throw new IOException("Pack200 no longer supported");
 						}
 					}
 					return;
@@ -181,9 +182,8 @@ public class Downloadable {
 						printMessage("Extracted: " + resolvedFile.getName());
 					}
 					if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
-						resolvedFile = unpack(resolvedFile);
-						changed = true;
-						printMessage("Unpacked: " + resolvedFile.getName());
+						printMessage("FAILURE Pack200 no longer supported: " + resolvedFile.getName());
+						throw new IOException("Pack200 no longer supported");
 					}
 					if (changed) {
 						localHash = getHash(this.algo, resolvedFile);
@@ -351,7 +351,7 @@ public class Downloadable {
 				.replace("'","%27")
 				.replace("[","%5B")
 				.replace("]","%5D")
-		;
+				;
 	}
 
 	private boolean nullOrEmpty(String input) {
@@ -382,54 +382,55 @@ public class Downloadable {
 		return new String(Hex.encodeHex(hash));		
 	}
 
-    public static File extractLZMA(File compressedFile) {
-    	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".lzma", "").replace(".LZMA", ""));
-    	InputStream input = null;
-    	OutputStream output = null;
-    	try {
-    		input = new LZMAInputStream(new FileInputStream(compressedFile));
-    		output = new FileOutputStream(unpacked);
-    		byte[] buf = new byte[65536];
-    		
-    		int read = input.read(buf);
-    		while (read >= 1) {
-    			output.write(buf,0,read);
-    			read = input.read(buf);
-    		}
-    	} catch (Exception e) {
-    		throw new RuntimeException("Unable to extract lzma: " + e.getMessage());
-    	} finally {
-    		IOUtils.closeQuietly(input);
-    		IOUtils.closeQuietly(output);
-    		compressedFile.delete();
-    	}
-    	return unpacked;
-    }
-    
-    public static File extractXZ(File compressedFile) {
-    	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".xz", "").replace(".XZ", ""));
-    	InputStream input = null;
-    	OutputStream output = null;
-    	try {
-    		input = new XZInputStream(new FileInputStream(compressedFile));
-    		output = new FileOutputStream(unpacked);
-    		byte[] buf = new byte[65536];
-    		
-    		int read = input.read(buf);
-    		while (read >= 1) {
-    			output.write(buf,0,read);
-    			read = input.read(buf);
-    		}
-    	} catch (Exception e) {
-    		throw new RuntimeException("Unable to extract xz: " + e.getMessage());
-    	} finally {
-    		IOUtils.closeQuietly(input);
-    		IOUtils.closeQuietly(output);
-    		compressedFile.delete();
-    	}
-    	return unpacked;    	
-    }
-    
+	public static File extractLZMA(File compressedFile) {
+		File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".lzma", "").replace(".LZMA", ""));
+		InputStream input = null;
+		OutputStream output = null;
+		try {
+			input = new LZMAInputStream(new FileInputStream(compressedFile));
+			output = new FileOutputStream(unpacked);
+			byte[] buf = new byte[65536];
+
+			int read = input.read(buf);
+			while (read >= 1) {
+				output.write(buf,0,read);
+				read = input.read(buf);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to extract lzma: " + e.getMessage());
+		} finally {
+			IOUtils.closeQuietly(input);
+			IOUtils.closeQuietly(output);
+			compressedFile.delete();
+		}
+		return unpacked;
+	}
+
+	public static File extractXZ(File compressedFile) {
+		File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".xz", "").replace(".XZ", ""));
+		InputStream input = null;
+		OutputStream output = null;
+		try {
+			input = new XZInputStream(new FileInputStream(compressedFile));
+			output = new FileOutputStream(unpacked);
+			byte[] buf = new byte[65536];
+
+			int read = input.read(buf);
+			while (read >= 1) {
+				output.write(buf,0,read);
+				read = input.read(buf);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to extract xz: " + e.getMessage());
+		} finally {
+			IOUtils.closeQuietly(input);
+			IOUtils.closeQuietly(output);
+			compressedFile.delete();
+		}
+		return unpacked;
+	}
+
+	/* Deprecated in Java
     public static File unpack(File compressedFile) {
     	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".pack", "").replace(".PACK", ""));
     	JarOutputStream jarStream = null;
@@ -444,4 +445,5 @@ public class Downloadable {
     	}
     	return unpacked;
     }
+    */
 }
