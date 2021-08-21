@@ -7,18 +7,14 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class DownloadUtil {
 	public static boolean get(final URL url, final File dest) {
 		try {
-			URLConnection conn;
-			if (url.getProtocol().startsWith("http")) {
-				conn = getMCUHttpURLConnection(url);
-			} else {
-				conn = url.openConnection();
-			}
-			conn.connect();
-			FileUtils.copyInputStreamToFile(conn.getInputStream(), dest);
+			Downloadable dl = new Downloadable("CursePack",dest.getName(),"force",0,new ArrayList<>(Collections.singleton(url)));
+			FileUtils.copyInputStreamToFile(dl.redirectAndConnect(url, null).getInputStream(), dest);
 			return true;
 		} catch( IOException e ) {
 			return false;

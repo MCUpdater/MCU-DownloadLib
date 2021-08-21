@@ -286,10 +286,11 @@ public class Downloadable {
 		String contentType = conn.getContentType();
 		if (contentType == null) {
 			printMessage("No content type found!  Download server may have issues.");
-		} else if (contentType.toLowerCase().startsWith("text/html")) {
+		} else if (contentType.toLowerCase().startsWith("text/html") && !target.equals(referer)) {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			IOUtils.copy(conn.getInputStream(), baos);
 			byte[] bytes = baos.toByteArray();
+			System.out.println("DownloadLib: " + bytes.length + " bytes");
 			Reader in = new InputStreamReader(new ByteArrayInputStream(bytes));
 			char[] buffer = new char[819200];
 			StringBuilder content = new StringBuilder();
@@ -337,8 +338,10 @@ public class Downloadable {
 				}
 			}
 			printMessage("File is in html format.  This may be an issue if an html file is not expected.");
+			return redirectAndConnect(target, target);
 		}
 		conn.connect();
+		System.out.println("Returning current connection");
 		return conn;
 	}
 
