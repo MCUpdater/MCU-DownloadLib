@@ -5,9 +5,11 @@ plugins {
 }
 
 version = downloadLibVersion
+sourceCompatibility = 1.8
 
 dependencies {
-    implementation 'org.tukaani:xz:1.9'
+    api 'org.tukaani:xz:1.9'
+    implementation 'org.apache.commons:commons-compress:1.21'
     implementation 'com.github.ipfs:java-ipfs-api:v1.0.0'
     implementation 'com.github.multiformats:java-multiaddr:v1.0.0'
     implementation 'com.github.multiformats:java-multihash:v1.0.0'

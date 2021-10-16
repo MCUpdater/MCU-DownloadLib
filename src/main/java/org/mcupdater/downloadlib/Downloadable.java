@@ -1,13 +1,12 @@
 package org.mcupdater.downloadlib;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
+import org.apache.commons.compress.java.util.jar.Pack200;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOExceptionWithCause;
 import org.apache.commons.io.IOUtils;
-import org.tukaani.xz.LZMAInputStream;
-import org.tukaani.xz.XZInputStream;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -19,7 +18,7 @@ import java.util.jar.JarOutputStream;
 public class Downloadable {
 	
 	public enum HashAlgorithm {
-		MD5,SHA
+		MD5, SHA1, SHA256, SHA512
 	}
 	
 	private final String friendlyName;
@@ -103,7 +102,7 @@ public class Downloadable {
 			this.tracker.setTotal(1);
 			return;
 		}
-		if (localHash.equals(this.hash)) {
+		if (localHash.equalsIgnoreCase(this.hash)) {
 			printMessage("Hash matches - No download");
 			this.tracker.setCurrent(1);
 			this.tracker.setTotal(1);
@@ -132,9 +131,8 @@ public class Downloadable {
 							printMessage("Extracted: " + resolvedFile.getName());
 						}
 						if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
-							//resolvedFile = unpack(resolvedFile);
-							printMessage("FAILURE Pack200 no longer supported: " + resolvedFile.getName());
-							throw new IOException("Pack200 no longer supported");
+							resolvedFile = unpack(resolvedFile);
+							printMessage("Unpacked: " + resolvedFile.getName());
 						}
 					}
 					return;
@@ -182,20 +180,22 @@ public class Downloadable {
 						printMessage("Extracted: " + resolvedFile.getName());
 					}
 					if (resolvedFile.getName().toLowerCase().endsWith(".pack")) {
-						printMessage("FAILURE Pack200 no longer supported: " + resolvedFile.getName());
-						throw new IOException("Pack200 no longer supported");
+						resolvedFile = unpack(resolvedFile);
+						changed = true;
+						printMessage("Unpacked: " + resolvedFile.getName());
 					}
 					if (changed) {
 						localHash = getHash(this.algo, resolvedFile);
 						FileUtils.copyFile(resolvedFile, new File(cache, localHash.toLowerCase() + ".bin"));
 					}
 				}
-				if (nullOrEmpty(this.hash) || localHash.equals(this.hash)) {
+				if (nullOrEmpty(this.hash) || localHash.equalsIgnoreCase(this.hash)) {
 					printMessage("Download finished");
 					//TODO Log entry: Download successful
 					return;
 				} else {
 					printMessage("Hash mismatch after download!");
+					printMessage(String.format("Hash: %s - Expected: %s / Actual: %s",this.algo.toString(), this.hash, localHash));
 					if (cacheFile.exists()) {
 						cacheFile.delete();
 					}
@@ -216,12 +216,12 @@ public class Downloadable {
 	}
 	
 	public URLConnection redirectAndConnect(URL target, URL referer) throws IOException {
-		if (target.getProtocol().equals("file")) {
+		if (target.getProtocol().equalsIgnoreCase("file")) {
 			URLConnection conn = target.openConnection();
 			conn.connect();
 			return conn;
 		}
-		if (target.getHost().toLowerCase().equals("www.dropbox.com")) {
+		if (target.getHost().equalsIgnoreCase("www.dropbox.com")) {
 			if (!target.toString().toLowerCase().contains("dl=1")) {
 				if (target.toString().contains("?")) {
 					target = new URL(target.toString().concat("&dl=1"));
@@ -245,7 +245,7 @@ public class Downloadable {
 			String basicAuth = "Basic " + new String(new Base64().encode(target.getUserInfo().getBytes()));
 			conn.setRequestProperty("Authorization", basicAuth);
 		}
-		if (target.getHost().equals("www.mediafire.com")) {
+		if (target.getHost().equalsIgnoreCase("www.mediafire.com")) {
 			try {
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				IOUtils.copy(conn.getInputStream(), baos);
@@ -298,7 +298,7 @@ public class Downloadable {
 				content.append(buffer);
 			}
 			in.close();
-			if (target.getHost().equals("adf.ly") && !target.toString().startsWith("https://adf.ly/go.php")) {
+			if (target.getHost().equalsIgnoreCase("adf.ly") && !target.toString().startsWith("https://adf.ly/go.php")) {
 				int key = content.toString().indexOf("'", content.toString().indexOf("ysmm"));
 				int after = content.toString().indexOf("'", key+1);
 				String raw = content.toString().substring(key+1, after);
@@ -321,19 +321,20 @@ public class Downloadable {
 					return redirectAndConnect(new URL(newUrl), target);
 				}
 			}
-			if (target.getHost().equals("optifine.net") && !target.toString().contains("downloadx")) {
+			if (target.getHost().equalsIgnoreCase("optifine.net") && !target.toString().contains("downloadx")) {
 				int key = content.toString().indexOf("downloadx");
 				int after = content.toString().indexOf("'", key);
-				String raw = content.toString().substring(key, after);
+				String raw = content.substring(key, after);
 				String newUrl = target.getProtocol() + "://optifine.net/" + raw;
 				return redirectAndConnect(new URL(newUrl), target);
 			}
 			//Check for META redirect
 			if (content.toString().toLowerCase().replaceAll(" ", "").contains("http-equiv=\"refresh\"")) {
-				int key = content.toString().toLowerCase().indexOf("http", content.toString().toLowerCase().indexOf("url", content.toString().toLowerCase().indexOf("http-equiv")));
+				int indexUrl = content.toString().toLowerCase().indexOf("url", content.toString().toLowerCase().indexOf("http-equiv"));
+				int key = content.toString().toLowerCase().indexOf("http", indexUrl);
 				if (key != -1) {
-					String strDelim = (content.toString().substring(content.toString().toLowerCase().indexOf("url", content.toString().toLowerCase().indexOf("http-equiv")), key).contains("'")) ? "'" : "\"";
-					String newUrl = content.toString().substring(key, content.toString().indexOf(strDelim, key));
+					String strDelim = (content.substring(indexUrl, key).contains("'")) ? "'" : "\"";
+					String newUrl = content.substring(key, content.toString().indexOf(strDelim, key));
 					return redirectAndConnect(new URL(newUrl), target);
 				}
 			}
@@ -366,20 +367,27 @@ public class Downloadable {
 		}
 	}
 
-	@SuppressWarnings("deprecation")
 	public static String getHash(HashAlgorithm algo, File file) throws IOException {
-		byte[] hash;
 		InputStream is = new FileInputStream(file);
-		if (algo == HashAlgorithm.MD5){
-			hash = DigestUtils.md5(is);
-		} else if (algo == HashAlgorithm.SHA){
-			hash = DigestUtils.sha(is);
-		} else {
-			hash = new byte[0];
+		String hash;
+		switch (algo) {
+			case MD5:
+				hash = DigestUtils.md5Hex(is);
+				break;
+			case SHA1:
+				hash = DigestUtils.sha1Hex(is);
+				break;
+			case SHA256:
+				hash = DigestUtils.sha256Hex(is);
+				break;
+			case SHA512:
+				hash = DigestUtils.sha512Hex(is);
+				break;
+			default:
+				hash = null;
 		}
 		is.close();
-		
-		return new String(Hex.encodeHex(hash));		
+		return hash;
 	}
 
 	public static File extractLZMA(File compressedFile) {
@@ -387,7 +395,7 @@ public class Downloadable {
 		InputStream input = null;
 		OutputStream output = null;
 		try {
-			input = new LZMAInputStream(new FileInputStream(compressedFile));
+			input = new LZMACompressorInputStream(new FileInputStream(compressedFile));
 			output = new FileOutputStream(unpacked);
 			byte[] buf = new byte[65536];
 
@@ -411,7 +419,7 @@ public class Downloadable {
 		InputStream input = null;
 		OutputStream output = null;
 		try {
-			input = new XZInputStream(new FileInputStream(compressedFile));
+			input = new XZCompressorInputStream(new FileInputStream(compressedFile));
 			output = new FileOutputStream(unpacked);
 			byte[] buf = new byte[65536];
 
@@ -430,20 +438,18 @@ public class Downloadable {
 		return unpacked;
 	}
 
-	/* Deprecated in Java
-    public static File unpack(File compressedFile) {
-    	File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".pack", "").replace(".PACK", ""));
-    	JarOutputStream jarStream = null;
-    	try {
-    		jarStream = new JarOutputStream(new FileOutputStream(unpacked));
-    		Pack200.newUnpacker().unpack(compressedFile, jarStream);
-    	} catch (Exception e) {
-    		throw new RuntimeException("Unable to unpack: " + e);
-    	} finally {
-    		IOUtils.closeQuietly(jarStream);
-    		compressedFile.delete();
-    	}
-    	return unpacked;
-    }
-    */
+	public static File unpack(File compressedFile) {
+		File unpacked = new File(compressedFile.getParentFile(), compressedFile.getName().replace(".pack", "").replace(".PACK", ""));
+		JarOutputStream jarStream = null;
+		try {
+			jarStream = new JarOutputStream(new FileOutputStream(unpacked));
+			Pack200.newUnpacker().unpack(compressedFile, jarStream);
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to unpack: " + e);
+		} finally {
+			IOUtils.closeQuietly(jarStream);
+			compressedFile.delete();
+		}
+		return unpacked;
+	}
 }
