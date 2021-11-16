@@ -1,55 +1,55 @@
 package org.mcupdater.downloadlib;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static java.lang.Thread.currentThread;
-import static java.lang.Thread.sleep;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DownloadQueue {
 
-	private final Queue<Downloadable> processQueue = new ConcurrentLinkedQueue<Downloadable>();
-	private final List<Downloadable> fullList = Collections.synchronizedList(new ArrayList<Downloadable>());
-	private final List<Downloadable> failureList = Collections.synchronizedList(new ArrayList<Downloadable>());
-	private final List<Downloadable> successList = Collections.synchronizedList(new ArrayList<Downloadable>());
-	private final List<ProgressTracker> trackers = Collections.synchronizedList(new ArrayList<ProgressTracker>());
+	private final Queue<Downloadable> processQueue = new ConcurrentLinkedQueue<>();
+	private final List<Downloadable> fullList = Collections.synchronizedList(new ArrayList<>());
+	private final List<Downloadable> failureList = Collections.synchronizedList(new ArrayList<>());
+	private final List<Downloadable> successList = Collections.synchronizedList(new ArrayList<>());
+	private final List<ProgressTracker> trackers = Collections.synchronizedList(new ArrayList<>());
 	private final TrackerListener listener;
 	private final String name;
 	private final AtomicInteger threadPoolRemain = new AtomicInteger();
 	private final File basePath;
 	private final File cachePath;
-	private boolean active;
 	private final String parent;
+	private final Logger logger;
 	private String mcUser = null;
 	private TaskableExecutor executor = null;
 	private DownloadQueue self;
+	private QueueStatus status;
 
-	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath, String mcUser) {
-		this(name,parent,listener,queue,basePath,cachePath);
+	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath, String mcUser, Logger logger) {
+		this(name,parent,listener,queue,basePath,cachePath, logger);
 		this.mcUser  = mcUser;
 		this.self = this;
 	}
-	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath) {
+	public DownloadQueue(String name, String parent, TrackerListener listener, Collection<Downloadable> queue, File basePath, File cachePath, Logger logger) {
 		this.name = name;
 		this.parent = parent;
 		this.listener = listener;
+		this.status = QueueStatus.NOT_STARTED;
 		if (queue != null) {
 			addToQueue(queue);
 		}
 		this.basePath = basePath;
 		this.cachePath = cachePath;
+		this.logger = logger;
 		this.self = this;
 	}
 	
 	private void addToQueue(Collection<Downloadable> queue) {
-		if (this.active) {
+		if (this.status != QueueStatus.NOT_STARTED) {
 			throw new IllegalStateException("Download queue already active");
 		}
 		this.fullList.addAll(queue);
@@ -58,62 +58,6 @@ public class DownloadQueue {
 			this.trackers.add(entry.getTracker());
 			entry.getTracker().setTotal(100000L);
 			entry.getTracker().setQueue(this);
-		}
-	}
-	
-	public void processQueue(ThreadPoolExecutor tpExecutor) {
-		if (this.active){
-			throw new IllegalStateException("Queue is already in progress");
-		}
-		this.active = true;
-		if (tpExecutor instanceof TaskableExecutor) {
-			this.executor = (TaskableExecutor) tpExecutor;
-		}
-		
-		if (this.fullList.isEmpty()) {
-			printMessage(parent + " - " + name + " - No files in queue");
-			this.threadPoolRemain.set(1);
-			tpExecutor.submit(new Runnable(){
-
-				@Override
-				public void run() {
-					DownloadQueue.this.iterateQueue();
-					//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
-				}
-			});
-		} else {
-			int maxPool = tpExecutor.getMaximumPoolSize();
-			this.threadPoolRemain.set(maxPool);
-			//this.listener.printMessage("Pool size: " + maxPool);
-			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
-				tpExecutor.submit(() -> {
-					DownloadQueue.this.iterateQueue();
-					//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
-				});
-			}
-		}
-		if (executor != null) {
-			Thread postMonitor = new Thread(() -> {
-				System.out.println("DownloadQueue - postMonitor start - " + name);
-				int count = 0;
-				while (!executor.isTaskCompleted()) {
-					try {
-						Thread.sleep(10);
-						count++;
-						if (count >= 1000) {
-							System.out.println("Waiting - " + name);
-							count = 0;
-						}
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-				System.out.println("DownloadQueue - Finished - " + name);
-				listener.onQueueFinished(self);
-			});
-			postMonitor.start();
-		} else {
-			listener.onQueueFinished(self);
 		}
 	}
 
@@ -144,13 +88,15 @@ public class DownloadQueue {
 	public void updateProgress() {
 		this.listener.onQueueProgress(this);
 	}
-	
-	public boolean isActive() {
-		return this.active;
-	}
-	
+
+	@Deprecated
 	public boolean isFinished() {
-		return (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0) && this.executor.isShutdown();
+		return (this.status == QueueStatus.FINISHED);
+		//return (this.processQueue.isEmpty()) && (this.threadPoolRemain.get() == 0) && this.executor.isShutdown();
+	}
+
+	public QueueStatus getStatus() {
+		return this.status;
 	}
 	
 	public float getProgress() {
@@ -162,6 +108,9 @@ public class DownloadQueue {
 				total += (float)tracker.getTotal();
 				current += (float)tracker.getCurrent();
 			}
+		}
+		if (this.status == QueueStatus.POSTPROCESSING || this.status == QueueStatus.FINISHED) {
+			return 1.0F;
 		}
 		
 		float result = -1.0F;
@@ -217,7 +166,83 @@ public class DownloadQueue {
 		return mcUser;
 	}
 
-	public boolean isComplete() {
-		return executor.isShutdown();
+	@Deprecated
+	public void processQueue(ThreadPoolExecutor tpExecutor) {
+		if (this.status != QueueStatus.NOT_STARTED){
+			throw new IllegalStateException("Queue is already in progress");
+		}
+		this.status = QueueStatus.DOWNLOADING;
+		if (tpExecutor instanceof TaskableExecutor) {
+			this.executor = (TaskableExecutor) tpExecutor;
+		}
+
+		if (this.fullList.isEmpty()) {
+			printMessage(parent + " - " + name + " - No files in queue");
+			this.threadPoolRemain.set(1);
+			//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
+			tpExecutor.submit(DownloadQueue.this::iterateQueue);
+		} else {
+			int maxPool = tpExecutor.getMaximumPoolSize();
+			this.threadPoolRemain.set(maxPool);
+			//this.listener.printMessage("Pool size: " + maxPool);
+			for (int threadCount = 0; threadCount < maxPool; threadCount++) {
+				//DownloadQueue.this.listener.printMessage(parent + " - " + name + " - Thread finished.");
+				tpExecutor.submit(DownloadQueue.this::iterateQueue);
+			}
+		}
+		if (executor != null) {
+			Thread postMonitor = new Thread(() -> {
+				System.out.println("DownloadQueue - postMonitor start - " + name);
+				int count = 0;
+				while (!executor.isTaskCompleted()) {
+					try {
+						if (executor.isDownloadComplete()) {
+							this.status = QueueStatus.POSTPROCESSING;
+						}
+						Thread.sleep(10);
+						count++;
+						if (count >= 1000) {
+							System.out.println("Waiting - " + name);
+							count = 0;
+						}
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				System.out.println("DownloadQueue - Finished - " + name);
+				this.status = QueueStatus.FINISHED;
+				listener.onQueueFinished(self);
+			});
+			postMonitor.start();
+		} else {
+			this.status = QueueStatus.FINISHED;
+			listener.onQueueFinished(self);
+		}
+	}
+
+	public void processQueue(int threads, Runnable postProcessingThread) {
+		ThreadPoolExecutor tpe = new ThreadPoolExecutor(threads, threads,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+		if (this.status != QueueStatus.NOT_STARTED){
+			throw new IllegalStateException("Queue is already in progress");
+		}
+		this.status = QueueStatus.DOWNLOADING;
+		tpe.submit(DownloadQueue.this::iterateQueue);
+		tpe.shutdown();
+		Thread monitor = new Thread(() -> {
+			try {
+				while (!tpe.awaitTermination(30, TimeUnit.SECONDS)) {
+					logger.finer(String.format("%s: Waiting for queue to finish", this.name));
+				}
+			} catch (InterruptedException e) {
+				logger.log(Level.WARNING, String.format("%s: Download queue interrupted!", this.name), e);
+				return;
+			}
+			this.status = QueueStatus.POSTPROCESSING;
+			listener.onQueueProgress(self);
+			postProcessingThread.run();
+			this.status = QueueStatus.FINISHED;
+			listener.onQueueFinished(self);
+		});
+		monitor.start();
 	}
 }

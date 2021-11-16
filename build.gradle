@@ -1,0 +1,30 @@
+import org.apache.tools.ant.filters.*
+
+plugins {
+    id 'workspace.java-library-conventions'
+}
+
+version = downloadLibVersion
+sourceCompatibility = 1.8
+
+dependencies {
+    api 'org.tukaani:xz:1.9'
+    implementation 'org.apache.commons:commons-compress:1.21'
+    implementation 'com.github.ipfs:java-ipfs-api:v1.0.0'
+    implementation 'com.github.multiformats:java-multiaddr:v1.0.0'
+    implementation 'com.github.multiformats:java-multihash:v1.0.0'
+}
+
+afterEvaluate {
+    processResources {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        from(sourceSets*.resources.srcDirs) {
+            include '**/*.properties'
+            filter(ReplaceTokens, tokens: [verMajor: Integer.toString(version.major), verMinor: Integer.toString(version.minor), verBuild: Integer.toString(version.buildNum)])
+            println("Version " + version)
+        }
+        from(sourceSets*.resources.srcDirs) {
+            exclude '**/*.properties'
+        }
+    }
+}

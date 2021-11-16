@@ -124,10 +124,12 @@ public class TestForm {
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
 					IOUtils.copy(cn.getInputStream(), baos);
 					byte[] bytes = baos.toByteArray();
+					System.out.println(bytes.length);
 					Reader in = new InputStreamReader(new ByteArrayInputStream(bytes));
 					char[] buffer = new char[819200];
 					while (in.read(buffer) != -1) {
 						txtContent.append(String.copyValueOf(buffer));
+						System.out.println("[debug] " + String.copyValueOf(buffer));
 					}
 					in.close();
 				} catch (java.io.IOException e1) {

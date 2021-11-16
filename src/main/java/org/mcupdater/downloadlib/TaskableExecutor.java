@@ -10,6 +10,7 @@ public class TaskableExecutor extends ThreadPoolExecutor {
 	
 	final Runnable after;
 	private boolean taskCompleted = false;
+	private boolean queueFinished = false;
 
 	public TaskableExecutor(int threads, Runnable after){
 		super(0,threads,0L,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
@@ -23,6 +24,7 @@ public class TaskableExecutor extends ThreadPoolExecutor {
 		System.out.println("Checking for post-download action thread.");
 		if (this.getQueue().size() == 0){
 			System.out.println("Starting thread.");
+			queueFinished = true;
 			Thread taskThread = new Thread(after);
 			taskThread.start();
 			while (taskThread.isAlive()) {
@@ -43,5 +45,8 @@ public class TaskableExecutor extends ThreadPoolExecutor {
 	public boolean isShutdown(){
 		return super.isShutdown() && taskCompleted;
 	}
-	
+
+	public boolean isDownloadComplete() {
+		return queueFinished;
+	}
 }
