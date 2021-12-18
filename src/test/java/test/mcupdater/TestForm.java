@@ -110,7 +110,8 @@ public class TestForm {
 				txtContent.setText("");
 				try {
 					Downloadable testDownload = new Downloadable("test","test.dat","",0, Arrays.asList(new URL(txtURL.getText())));
-					URLConnection cn = testDownload.redirectAndConnect(new URL(txtURL.getText()),null);
+					URLConnection cn = new URL(txtURL.getText()).openConnection();
+					//URLConnection cn = testDownload.redirectAndConnect(new URL(txtURL.getText()),null);
 					//cn.setRequestProperty("User-Agent","MCU-DownloadLib/" + Version.API_VERSION);
 					//cn.setRequestProperty("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 					/*
